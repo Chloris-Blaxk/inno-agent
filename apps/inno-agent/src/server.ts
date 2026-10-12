@@ -74,7 +74,7 @@ import {
 } from "./server/session-model.js";
 import { logger } from "./logger.js";
 import { applyRuntimeEnvironment, parseRuntimeArgs, resolveRuntimePaths } from "./runtime.js";
-import { installProcessFallbacks } from "./utils/process-fallback.js";
+import { createGracefulShutdownHandler, installProcessFallbacks } from "./utils/process-fallback.js";
 import { questionBridge } from "./agent/question-bridge.js";
 import { permissionBridge } from "./agent/permission-bridge.js";
 import { streamRegistry } from "./chat/stream-registry.js";
@@ -95,7 +95,9 @@ import { WebSocketServer, type WebSocket } from "ws";
 // timeout (retry.provider.timeoutMs, default 10 min) should fire first; this
 // ensures a hung connection can't live longer than 15 minutes even if the
 // provider timeout fails to abort.
-setGlobalDispatcher(new EnvHttpProxyAgent({ bodyTimeout: 900_000, headersTimeout: 0 }));
+// headersTimeout: keep undici's 300s default so a provider that never sends
+// response headers cannot leave the route waiting indefinitely.
+setGlobalDispatcher(new EnvHttpProxyAgent({ bodyTimeout: 900_000, headersTimeout: 300_000 }));
 installFetchLogger();
 
 const parsed = parseRuntimeArgs(process.argv.slice(2));
@@ -1809,6 +1811,14 @@ installProcessFallbacks({
 		try { wss.close(); } catch { /* best effort */ }
 	},
 });
+
+const gracefulShutdown = createGracefulShutdownHandler({
+	server,
+	wss,
+	exit: (code) => process.exit(code),
+});
+process.on("SIGTERM", gracefulShutdown);
+process.on("SIGINT", gracefulShutdown);
 
 server.listen(port, () => {
 	console.log(`[inno-server] listening on http://localhost:${port}`);
