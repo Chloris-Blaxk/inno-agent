@@ -1,4 +1,5 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { ArrowDown, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { AttachmentRef, ChatMessage, ChatToolRecord, PendingQuestion } from "../../types/chat.js";
@@ -14,6 +15,7 @@ import { TodoWidget, extractTodoTasks } from "./TodoWidget.js";
 import { answeredQuestionnaireFromTool } from "../../utils/questionnaire.js";
 import type { AnsweredQuestionnaireView } from "../../utils/questionnaire.js";
 import { TerminalDrawer } from "../terminal/TerminalDrawer.js";
+import { Tooltip } from "../ui/Tooltip.js";
 
 function traceContainsAssistantText(message: ChatMessage): boolean {
 	if (message.trace?.some((step) => (step.kind === "progress" || step.kind === "answer") && Boolean(step.text?.trim()))) return true;
@@ -54,9 +56,6 @@ interface ChatConversationProps {
 	topOverlay?: ReactNode;
 	scrollRef: RefObject<HTMLDivElement | null>;
 	onScroll: () => void;
-	onWheel: () => void;
-	onTouchStart: () => void;
-	onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
 	onPauseAutoScroll: () => void;
 	showLatestButton: boolean;
 	onJumpToLatest: () => void;
@@ -82,6 +81,8 @@ interface ChatConversationProps {
 	sessionOpening?: boolean;
 	/** Existing-workspace switcher rendered next to the title. */
 	workspaceControl?: ReactNode;
+	/** Electron app-level title bar mount. Undefined keeps the browser header inline. */
+	desktopHeaderHost?: HTMLDivElement | null;
 	/** Reserve room for the desktop chrome's workspace button when collapsed. */
 	workspaceCollapsed?: boolean;
 	/** When the session sidebar is collapsed its floating expand button overlaps the header's left edge. */
@@ -94,9 +95,6 @@ export function ChatConversation({
 	topOverlay,
 	scrollRef,
 	onScroll,
-	onWheel,
-	onTouchStart,
-	onPointerDown,
 	onPauseAutoScroll,
 	showLatestButton,
 	onJumpToLatest,
@@ -116,6 +114,7 @@ export function ChatConversation({
 	sessionHasTopic = false,
 	sessionOpening = false,
 	workspaceControl,
+	desktopHeaderHost,
 	workspaceCollapsed = false,
 	sidebarCollapsed = false,
 }: ChatConversationProps) {
@@ -233,26 +232,33 @@ export function ChatConversation({
 		(file: AttachmentRef) => workspaceFileUrl(file.path, activeWorkspaceId ?? undefined),
 		[activeWorkspaceId],
 	);
+	const conversationHeader = (
+		<header className={`inno-conversation-header relative z-[5] flex h-12 shrink-0 items-center gap-2.5 border-b border-[var(--inno-border)] bg-[color-mix(in_srgb,var(--inno-chat-bg)_85%,transparent)] pr-4 backdrop-blur-md ${workspaceCollapsed ? "pr-14" : ""} ${sidebarCollapsed ? "inno-conversation-header--sidebar-collapsed" : "pl-4"}`}>
+			<div className="inno-conversation-heading flex min-w-0 items-center gap-2.5">
+				<Tooltip label={visibleSessionTitle}>
+					<span className="inno-conversation-title min-w-0 truncate text-[14.5px] font-semibold text-[var(--inno-text)]">{visibleSessionTitle}</span>
+				</Tooltip>
+				{workspaceControl ? <div className="inno-conversation-workspace-control shrink-0">{workspaceControl}</div> : null}
+			</div>
+			{btwControl ? <div className="ml-auto flex shrink-0 items-center">{btwControl}</div> : null}
+		</header>
+	);
+	const renderedConversationHeader = desktopHeaderHost === undefined
+		? conversationHeader
+		: desktopHeaderHost
+			? createPortal(conversationHeader, desktopHeaderHost)
+			: null;
 
 	return (
 		<section className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-[var(--inno-chat-bg)]">
 			{topOverlay}
 			{smartToast}
-			<header className={`inno-conversation-header relative z-[5] flex h-12 shrink-0 items-center gap-2.5 border-b border-[var(--inno-border)] bg-[color-mix(in_srgb,var(--inno-chat-bg)_85%,transparent)] pr-4 backdrop-blur-md ${workspaceCollapsed ? "pr-14" : ""} ${sidebarCollapsed ? "inno-conversation-header--sidebar-collapsed" : "pl-4"}`}>
-				<div className="inno-conversation-heading flex min-w-0 items-center gap-2.5">
-					<span className="inno-conversation-title min-w-0 truncate text-[14.5px] font-semibold text-[var(--inno-text)]" title={visibleSessionTitle}>{visibleSessionTitle}</span>
-					{workspaceControl ? <div className="inno-conversation-workspace-control shrink-0">{workspaceControl}</div> : null}
-				</div>
-				{btwControl ? <div className="ml-auto flex shrink-0 items-center">{btwControl}</div> : null}
-			</header>
+			{renderedConversationHeader}
 			<div className="conversation-stage relative flex-1 min-h-0">
 				<div
 					ref={scrollRef}
 					onScroll={onScroll}
-					onWheel={onWheel}
-					onTouchStart={onTouchStart}
-					onPointerDown={onPointerDown}
-					className="chat-scroll inno-chat-grid h-full min-h-0 overflow-y-scroll px-4 py-4"
+					className="chat-scroll h-full min-h-0 overflow-y-scroll px-4 py-4"
 				>
 					<div data-conversation-content className="mx-auto flex min-w-0 max-w-[780px] flex-col gap-3">
 						{showHistoryLoading ? (
@@ -286,7 +292,7 @@ export function ChatConversation({
 								const isTurnActionOwner = lastAssistantMessageIndexes.has(index) || traceTurnPresentation.actionOwnerIndexes.has(index);
 								const showActions = message.role === "user" || (isTurnActionOwner && !isActiveTurnAssistant);
 								return (
-									<div key={messageKey} data-conversation-turn={turnIndex}>
+									<div key={messageKey} data-conversation-turn={turnIndex} data-entry-id={message.entryId}>
 										<MessageBubble
 											message={message}
 											collapseUserToFirstLine={collapseUserMessages}

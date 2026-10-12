@@ -1,5 +1,6 @@
 import { EventEmitter } from "./event-emitter.js";
 import { fitPanelLayout, resolveWorkspaceModeForViewport, WORKSPACE_DEFAULT_WIDTH } from "./app-layout.js";
+import { syncNavigationHistory } from "./navigation-history.js";
 
 /**
  * The right panel only hosts the artifact/file browser now — notebook,
@@ -73,8 +74,7 @@ class AppStoreImpl extends EventEmitter<AppStoreEvents> {
 		if (TAB_TO_PAGE[nextUrl.searchParams.get("tab") ?? ""]) nextUrl.searchParams.delete("tab");
 		const current = new URL(window.location.href);
 		if (nextUrl.href === current.href) return;
-		if (mode === "push") window.history.pushState({}, "", nextUrl);
-		else window.history.replaceState({}, "", nextUrl);
+		syncNavigationHistory(nextUrl, mode);
 	}
 
 	openSettings(tab: SettingsTab = "general") {
@@ -112,7 +112,13 @@ class AppStoreImpl extends EventEmitter<AppStoreEvents> {
 			// Full mode occupies the chat surface but keeps the session sidebar as
 			// the navigation anchor. Only a split layout needs a fit pass here.
 			if (nextWorkspaceMode !== "full" && typeof window !== "undefined") {
-				const fitted = fitPanelLayout(window.innerWidth, false, nextWorkspaceMode, this.workspaceWidth);
+				const fitted = fitPanelLayout(
+					window.innerWidth,
+					false,
+					nextWorkspaceMode,
+					this.workspaceWidth,
+					Boolean(window.innoDesktop),
+				);
 				if (fitted?.sidebarCollapsed === false) {
 					nextWorkspaceMode = fitted.workspaceMode;
 					nextWorkspaceWidth = fitted.workspaceWidth;
@@ -140,7 +146,13 @@ class AppStoreImpl extends EventEmitter<AppStoreEvents> {
 			// Narrow viewports have no room for a side-by-side panel: every call
 			// site gets the full-width overlay instead of a refused/squeezed split.
 			nextWorkspaceMode = resolveWorkspaceModeForViewport(nextWorkspaceMode, window.innerWidth);
-			const fitted = fitPanelLayout(window.innerWidth, nextSidebarCollapsed, nextWorkspaceMode, nextWorkspaceWidth);
+			const fitted = fitPanelLayout(
+				window.innerWidth,
+				nextSidebarCollapsed,
+				nextWorkspaceMode,
+				nextWorkspaceWidth,
+				Boolean(window.innoDesktop),
+			);
 			if (!fitted) return;
 			nextSidebarCollapsed = fitted.sidebarCollapsed;
 			nextWorkspaceMode = fitted.workspaceMode;
@@ -162,7 +174,13 @@ class AppStoreImpl extends EventEmitter<AppStoreEvents> {
 		let nextSidebarCollapsed = this.sidebarCollapsed;
 		let nextWorkspaceMode = this.workspaceMode;
 		if (typeof window !== "undefined") {
-			const fitted = fitPanelLayout(window.innerWidth, nextSidebarCollapsed, nextWorkspaceMode, nextWorkspaceWidth);
+			const fitted = fitPanelLayout(
+				window.innerWidth,
+				nextSidebarCollapsed,
+				nextWorkspaceMode,
+				nextWorkspaceWidth,
+				Boolean(window.innoDesktop),
+			);
 			if (fitted) {
 				nextSidebarCollapsed = fitted.sidebarCollapsed;
 				nextWorkspaceMode = fitted.workspaceMode;

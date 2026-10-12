@@ -135,7 +135,7 @@ describe.skipIf(!nodeSqliteFts5Available())("L3 store + recall (node:sqlite + FT
 	it("index state round-trips", () => {
 		expect(store!.getIndexState("s1")).toBeNull();
 		store!.setIndexState("s1", 123, 456, 7);
-		expect(store!.getIndexState("s1")).toEqual({ lastOffset: 123, lastMtimeMs: 456, chunkCount: 7 });
+		expect(store!.getIndexState("s1")).toEqual({ lastOffset: 123, lastMtimeMs: 456, chunkCount: 7, indexVersion: 0 });
 	});
 
 	function writeSession(name: string, lines: unknown[]): string {

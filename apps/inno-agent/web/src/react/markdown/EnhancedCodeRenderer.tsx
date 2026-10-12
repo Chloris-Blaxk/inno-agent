@@ -215,8 +215,7 @@ interface CodeToolbarProps {
 	copied: boolean;
 	isFullscreen: boolean;
 	hasEditedSource: boolean;
-	onToggleMore: () => void;
-	onCloseMore: () => void;
+	onMoreOpenChange: (open: boolean) => void;
 	onRun: () => void;
 	onApply: () => void;
 	onEdit: () => void;
@@ -243,8 +242,7 @@ function CodeToolbar({
 	copied,
 	isFullscreen,
 	hasEditedSource,
-	onToggleMore,
-	onCloseMore,
+	onMoreOpenChange,
 	onRun,
 	onApply,
 	onEdit,
@@ -282,18 +280,21 @@ function CodeToolbar({
 						{editing ? <Save size={14} /> : <Pencil size={14} />}
 					</ToolbarIconButton>
 				) : null}
-				{hasMoreActions ? <div className="inno-markdown-toolbar-menu-anchor">
-					<ToolbarIconButton
+				{hasMoreActions ? <ToolbarMenu
+					trigger={<ToolbarIconButton
 						label={t("markdown.moreTools", "更多")}
 						showLabel
 						menu
 						expanded={moreOpen}
 						aria-controls={moreId}
-						onClick={onToggleMore}
 					>
 						<MoreHorizontal size={14} />
-					</ToolbarIconButton>
-					<ToolbarMenu id={moreId} open={moreOpen} onClose={onCloseMore} label={t("markdown.moreTools", "更多")}>
+					</ToolbarIconButton>}
+					id={moreId}
+					open={moreOpen}
+					onOpenChange={onMoreOpenChange}
+					label={t("markdown.moreTools", "更多")}
+				>
 						{expandable ? (
 							<ToolbarMenuItem label={expanded ? t("markdown.collapseCode", "折叠代码") : t("markdown.expandCode", "展开代码")} onClick={onExpand}>
 								{expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -305,8 +306,7 @@ function CodeToolbar({
 						{hasEditedSource ? <ToolbarMenuItem label={t("markdown.restoreOriginal", "恢复模型原文")} onClick={onRestore}><RotateCcw size={14} /></ToolbarMenuItem> : null}
 						{canDownload ? <ToolbarMenuItem label={t("markdown.downloadCode", "下载代码")} onClick={onDownload}><Download size={14} /></ToolbarMenuItem> : null}
 						{canFullscreen ? <ToolbarMenuItem label={t("markdown.fullscreen", "全屏查看")} onClick={onFullscreen}><Maximize2 size={14} /></ToolbarMenuItem> : null}
-					</ToolbarMenu>
-				</div> : null}
+				</ToolbarMenu> : null}
 			</MarkdownToolbarGroup>
 		</MarkdownToolbar>
 	);
@@ -387,8 +387,7 @@ export function EnhancedCodeRenderer({ code, language, isIncomplete }: CustomRen
 			wrapped={wrapped}
 			copied={copied}
 			isFullscreen={isFullscreen}
-			onToggleMore={() => setMoreOpen((value) => !value)}
-			onCloseMore={() => setMoreOpen(false)}
+			onMoreOpenChange={setMoreOpen}
 			onRun={() => runPython(source)}
 			onApply={handleApply}
 			onEdit={handleEdit}

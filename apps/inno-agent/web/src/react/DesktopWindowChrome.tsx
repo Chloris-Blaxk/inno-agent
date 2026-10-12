@@ -1,45 +1,111 @@
 import type { ReactNode } from "react";
-import { PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ArrowLeft, ArrowRight, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, SquarePen } from "lucide-react";
+import { Tooltip } from "./ui/Tooltip.js";
 
 interface DesktopWindowChromeProps {
 	showWorkspaceControl: boolean;
+	showSidebarControl: boolean;
+	showNewChatControl: boolean;
+	showChatHeader: boolean;
+	isDesktopWindow: boolean;
 	sidebarCollapsed: boolean;
+	newChatLabel: string;
+	sidebarExpandLabel: string;
+	sidebarCollapseLabel: string;
 	workspaceCollapsed: boolean;
+	workspaceOpenLabel: string;
+	workspaceCollapseLabel: string;
+	backLabel: string;
+	forwardLabel: string;
+	canNavigateBack: boolean;
+	canNavigateForward: boolean;
 	btwControl?: ReactNode;
+	onHeaderHostChange?: (host: HTMLDivElement | null) => void;
 	onToggleSidebar: () => void;
+	onNewChat: () => void;
+	onNavigateBack: () => void;
+	onNavigateForward: () => void;
 	onToggleWorkspace: () => void;
 }
 
 /**
- * Renderer-owned macOS window chrome. Electron keeps the traffic lights in
- * the hidden title-bar area; the overlay is limited to the renderer control
- * so the page headers below remain reliable drag surfaces and click targets.
- *
- * The sidebar toggle only renders while the sidebar is collapsed — the
- * expanded sidebar carries its own collapse button inside its header, so no
- * floating control ever overlaps the brand row (reference-app pattern).
+ * Renderer-owned desktop toolbar. macOS keeps its traffic lights in the
+ * hidden native title bar; Windows keeps its standard native title bar above
+ * this toolbar. Browser layouts keep their local chat header.
  */
 export function DesktopWindowChrome({
 	showWorkspaceControl,
+	showSidebarControl,
+	showNewChatControl,
+	showChatHeader,
+	isDesktopWindow,
 	sidebarCollapsed,
+	newChatLabel,
+	sidebarExpandLabel,
+	sidebarCollapseLabel,
 	workspaceCollapsed,
+	workspaceOpenLabel,
+	workspaceCollapseLabel,
+	backLabel,
+	forwardLabel,
+	canNavigateBack,
+	canNavigateForward,
 	btwControl,
+	onHeaderHostChange,
 	onToggleSidebar,
+	onNewChat,
+	onNavigateBack,
+	onNavigateForward,
 	onToggleWorkspace,
 }: DesktopWindowChromeProps) {
+	const showSidebarToggle = isDesktopWindow ? showSidebarControl : sidebarCollapsed;
+	const showNavigationControls = isDesktopWindow;
+
 	return (
-		<div className="inno-window-chrome" aria-label="窗口工具栏">
-			{sidebarCollapsed ? (
+		<div className={`inno-window-chrome${showNewChatControl ? " has-new-chat-control" : ""}`} aria-label="窗口工具栏">
+			{isDesktopWindow && showChatHeader ? (
+				<>
+					<div className="inno-window-chrome-chat-header" ref={onHeaderHostChange} />
+					<div className="inno-window-chrome-divider" aria-hidden="true" />
+				</>
+			) : null}
+			{showNavigationControls || showSidebarToggle ? (
 				<div className="inno-window-chrome-bar">
-					<button
-						type="button"
-						className="inno-window-chrome-button"
-						title="展开侧栏"
-						aria-label="展开侧栏"
-						onClick={onToggleSidebar}
-					>
-						<PanelLeftOpen size={15} />
-					</button>
+					{showNavigationControls ? (
+						<>
+							<Tooltip label={backLabel} side="bottom">
+								<button type="button" className="inno-window-chrome-button" aria-label={backLabel} disabled={!canNavigateBack} onClick={onNavigateBack}>
+									<ArrowLeft size={15} />
+								</button>
+							</Tooltip>
+							<Tooltip label={forwardLabel} side="bottom">
+								<button type="button" className="inno-window-chrome-button" aria-label={forwardLabel} disabled={!canNavigateForward} onClick={onNavigateForward}>
+									<ArrowRight size={15} />
+								</button>
+							</Tooltip>
+						</>
+					) : null}
+					{showSidebarToggle ? (
+						<Tooltip label={sidebarCollapsed ? sidebarExpandLabel : sidebarCollapseLabel} side="bottom">
+							<button
+								type="button"
+								className="inno-window-chrome-button"
+								aria-label={sidebarCollapsed ? sidebarExpandLabel : sidebarCollapseLabel}
+								aria-controls="session-sidebar"
+								aria-expanded={!sidebarCollapsed}
+								onClick={onToggleSidebar}
+							>
+								{sidebarCollapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+							</button>
+						</Tooltip>
+					) : null}
+					{showNewChatControl ? (
+						<Tooltip label={newChatLabel} side="bottom">
+							<button type="button" className="inno-window-chrome-button" aria-label={newChatLabel} onClick={onNewChat}>
+								<SquarePen size={15} />
+							</button>
+						</Tooltip>
+					) : null}
 				</div>
 			) : null}
 			{btwControl ? (
@@ -48,16 +114,17 @@ export function DesktopWindowChrome({
 				</div>
 			) : null}
 			{showWorkspaceControl ? (
-				<button
-					type="button"
-					className="inno-window-chrome-button inno-window-chrome-workspace-button"
-					title={workspaceCollapsed ? "打开工作区" : "收起工作区"}
-					aria-label={workspaceCollapsed ? "打开工作区" : "收起工作区"}
-					aria-pressed={!workspaceCollapsed}
-					onClick={onToggleWorkspace}
-				>
-					{workspaceCollapsed ? <PanelRightOpen size={15} /> : <PanelRightClose size={15} />}
-				</button>
+				<Tooltip label={workspaceCollapsed ? workspaceOpenLabel : workspaceCollapseLabel} side="bottom">
+					<button
+						type="button"
+						className="inno-window-chrome-button inno-window-chrome-workspace-button"
+						aria-label={workspaceCollapsed ? workspaceOpenLabel : workspaceCollapseLabel}
+						aria-pressed={!workspaceCollapsed}
+						onClick={onToggleWorkspace}
+					>
+						{workspaceCollapsed ? <PanelRightOpen size={15} /> : <PanelRightClose size={15} />}
+					</button>
+				</Tooltip>
 			) : null}
 		</div>
 	);

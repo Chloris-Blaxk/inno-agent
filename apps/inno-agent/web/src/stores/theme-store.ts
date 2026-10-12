@@ -1,4 +1,5 @@
 import { EventEmitter } from "./event-emitter.js";
+import { saveThemeSettings } from "../api/settings.js";
 
 export type ThemeId = "light" | "dark";
 
@@ -9,7 +10,7 @@ const STORAGE_KEY = "inno.theme";
 /** Preview swatch colors for the theme picker UI. */
 export const THEME_PREVIEW_COLORS: Record<ThemeId, string> = {
 	light: "#f8fafd",
-	dark: "#131415",
+	dark: "#171717",
 };
 
 /** Retired themes (warm/ocean/innospark) migrate to light. */
@@ -64,7 +65,6 @@ class ThemeStoreImpl extends EventEmitter<ThemeStoreEvents> {
 		this.isSaving = true;
 		this.emit("change", undefined);
 		try {
-			const { saveThemeSettings } = await import("../api/settings.js");
 			await saveThemeSettings(id);
 		} catch {
 			// best-effort — localStorage is the real source of truth

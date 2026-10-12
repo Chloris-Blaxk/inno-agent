@@ -22,6 +22,7 @@ import { workspaceStore } from "./workspace-store.js";
 import { workspacesStore } from "./workspaces-store.js";
 import { terminalStore } from "./terminal-store.js";
 import { hasMermaidFence, preloadMermaidMarkdownRuntime } from "../utils/mermaid-runtime.js";
+import { syncNavigationHistory } from "./navigation-history.js";
 
 interface SessionsStoreEvents {
 	change: void;
@@ -152,6 +153,30 @@ export class SessionsStoreImpl extends EventEmitter<SessionsStoreEvents> {
 		} catch {
 			// ignore — keep previous list
 		}
+	}
+
+	/** Update the sidebar preview immediately while preserving the conversation title. */
+	showPendingSession(sessionId: string | null, latestMessage: string): void {
+		const preview = latestMessage.trim();
+		if (!sessionId || !preview) return;
+		const existing = this.sessions.find((session) => session.id === sessionId);
+		const hasStableTitle = existing?.hasTopic === true || (existing !== undefined && existing.messageCount > 0);
+		const name = hasStableTitle && existing ? existing.name : (preview.length > 48 ? `${preview.slice(0, 45)}...` : preview);
+		const now = new Date().toISOString();
+		const optimistic: SessionMeta = {
+			...existing,
+			id: sessionId,
+			name,
+			createdAt: existing?.createdAt ?? now,
+			updatedAt: now,
+			messageCount: Math.max(existing?.messageCount ?? 0, 1),
+			preview,
+			channels: existing?.channels.length ? existing.channels : ["web"],
+			origin: existing?.origin ?? "web",
+			hasTopic: existing?.hasTopic ?? false,
+		};
+		this.sessions = [optimistic, ...this.sessions.filter((session) => session.id !== sessionId)];
+		this.emit("change", undefined);
 	}
 
 	/**
@@ -330,8 +355,7 @@ export class SessionsStoreImpl extends EventEmitter<SessionsStoreEvents> {
 		else nextUrl.searchParams.delete("session");
 		const current = new URL(window.location.href);
 		if (nextUrl.href === current.href) return;
-		if (mode === "push") window.history.pushState({}, "", nextUrl);
-		else window.history.replaceState({}, "", nextUrl);
+		syncNavigationHistory(nextUrl, mode);
 	}
 
 	/**
@@ -384,7 +408,6 @@ export class SessionsStoreImpl extends EventEmitter<SessionsStoreEvents> {
 	 * Create a session bound to a specific workspace (or new workspace), then open it.
 	 */
 	async createSessionWith(input: CreateSessionInput = {}): Promise<void> {
-		this.isLoading = true;
 		this.pendingNewSession = false;
 		this.preselectedWorkspaceId = null;
 		// Make sure no previous stream / terminal lingers.
@@ -406,7 +429,10 @@ export class SessionsStoreImpl extends EventEmitter<SessionsStoreEvents> {
 			chatStore.clear();
 			// Refresh side panels so the new workspace shows up.
 			void workspacesStore.load();
-			await this.load();
+			// Session creation is a background transition for the sidebar. Keep its
+			// current rows visible while syncing instead of replacing them with the
+			// full-page loading state used during initial load.
+			await this.refresh();
 			this.currentSessionId = created.id;
 			this.syncSessionUrl(created.id, "replace");
 			if (created.workspaceId) {
@@ -434,7 +460,6 @@ export class SessionsStoreImpl extends EventEmitter<SessionsStoreEvents> {
 			}
 			this.emit("change", undefined);
 		} finally {
-			this.isLoading = false;
 			this.emit("change", undefined);
 		}
 	}

@@ -2,6 +2,7 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import zhCN from "./locales/zh-CN.json";
 import en from "./locales/en.json";
+import type { SearchResult } from "../../../src/shared/search.js";
 
 const STORAGE_KEY = "inno.locale";
 type SupportedLocale = "zh-CN" | "en";
@@ -22,7 +23,13 @@ type DesktopBridge = {
 	setCloseDialogCopy(copy: CloseDialogCopy): void;
 	expandWindowWidth(side: "left" | "right", additionalWidth: number): Promise<boolean>;
 	getWindowWidthCapacity(side: "left" | "right"): Promise<number>;
+	isFullScreen?(): Promise<boolean>;
+	onFullScreenChange?(callback: (isFullScreen: boolean) => void): () => void;
 	openLocalFile(file: File): Promise<boolean>;
+	openSearchWindow(theme: "light" | "dark"): Promise<boolean>;
+	closeSearchWindow(): void;
+	openSearchResult(result: SearchResult): void;
+	onSearchNavigation(callback: (result: SearchResult) => void): () => void;
 };
 
 declare global {

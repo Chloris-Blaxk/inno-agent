@@ -28,13 +28,13 @@ const TERMINAL_THEMES: Record<ThemeId, ITheme> = {
 		brightCyan: "#06b6d4", brightWhite: "#1f1f1f",
 	},
 	dark: {
-		background: "#131415", foreground: "#e8eaed", cursor: "#c4c7cb",
-		cursorAccent: "#131415", selectionBackground: "#3a3d42",
-		black: "#1e2023", red: "#f28b82", green: "#81c995", yellow: "#f9ab00",
+		background: "#171717", foreground: "#ececec", cursor: "#c5c5c5",
+		cursorAccent: "#171717", selectionBackground: "#3b3b3b",
+		black: "#262626", red: "#f39a92", green: "#8bd3a0", yellow: "#f7bd55",
 		blue: "#a8c7fa", magenta: "#c58af9", cyan: "#78d9ec", white: "#c4c7cb",
-		brightBlack: "#5f6368", brightRed: "#f6aea9", brightGreen: "#a8dab5",
+		brightBlack: "#979797", brightRed: "#f6aea9", brightGreen: "#a8dab5",
 		brightYellow: "#fdd663", brightBlue: "#c4ddfc", brightMagenta: "#dab5fb",
-		brightCyan: "#a5e5f2", brightWhite: "#e8eaed",
+		brightCyan: "#a5e5f2", brightWhite: "#ececec",
 	},
 };
 

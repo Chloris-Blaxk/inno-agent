@@ -17,6 +17,9 @@ import { type ArboristNode, toArboristNodes } from "../types/workspace.js";
 import { normalizeMarkdownMath } from "../utils/markdown-math.js";
 import { useStoreSnapshot } from "./hooks.js";
 import { ContextMenu, type ContextMenuItem } from "./ui/ContextMenu.js";
+import { Button } from "./ui/Button.js";
+import { IconButton, Input } from "./ui/index.js";
+import { Tooltip } from "./ui/Tooltip.js";
 import { getLongPressHandlers } from "./ui/long-press.js";
 import { FileName } from "./FileName.js";
 import { buildDragFilePanel, hiddenDragImage } from "./chat/smart-input/drag-utils.js";
@@ -347,10 +350,10 @@ function OfficePreview({ file }: { file: WorkspaceFileDetail }) {
 			<div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm text-[var(--inno-text-muted)]">
 				<div className="font-medium text-[var(--inno-text)]">{file.name}</div>
 				<div className="text-xs text-[var(--inno-danger)]">{error}</div>
-				<button className="flex items-center gap-1 rounded-md border border-[var(--inno-border)] px-3 py-1.5 text-xs text-[var(--inno-text-muted)] hover:bg-[var(--inno-surface-muted)]" onClick={downloadOriginal}>
+				<Button variant="secondary" size="xs" onClick={downloadOriginal}>
 					<Download size={12} />
 					{t("files.download", "Download")}
-				</button>
+				</Button>
 			</div>
 		);
 	}
@@ -361,10 +364,10 @@ function OfficePreview({ file }: { file: WorkspaceFileDetail }) {
 				<div className="text-xs text-[var(--inno-text-muted)]">
 					{t("preview.officeNote", "Text extracted for preview · formatting may differ")} · {t("preview.pageCount", "{{count}} pages", { count: data?.pageCount ?? pages.length })}
 				</div>
-				<button className="flex shrink-0 items-center gap-1 rounded-md border border-[var(--inno-border)] bg-[var(--inno-surface)] px-2.5 py-1 text-xs text-[var(--inno-text-muted)] hover:bg-[var(--inno-surface-muted)]" onClick={downloadOriginal}>
+				<Button variant="secondary" size="xs" className="shrink-0" onClick={downloadOriginal}>
 					<Download size={12} />
 					{t("files.download", "Download")}
-				</button>
+				</Button>
 			</div>
 			<div className="space-y-3">
 				{pages.map((p) => (
@@ -437,13 +440,15 @@ function Preview({ file, isLoading }: { file: WorkspaceFileDetail; isLoading: bo
 			<div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-[var(--inno-text-muted)]">
 				<div className="text-lg font-medium text-[var(--inno-text)]">{file.name}</div>
 				<div>{t("preview.binaryFile")} · {formatSize(file.size)}</div>
-				<button
-					className="mt-2 flex items-center gap-1.5 rounded-md border border-[var(--inno-border)] px-3 py-1.5 text-xs text-[var(--inno-text-muted)] hover:bg-[var(--inno-surface-muted)]"
+				<Button
+					variant="secondary"
+					size="xs"
+					className="mt-2"
 					onClick={() => workspaceStore.openAsText()}
 				>
 					<FileCode2 size={14} />
 					{t("preview.openAsText", "Open as Text")}
-				</button>
+				</Button>
 			</div>
 		);
 	}
@@ -515,15 +520,15 @@ function StreamingPreviewPane({ preview, onToggleSidebar, sidebarOpen }: { previ
 		<div className="flex h-full flex-col">
 			<div className="inno-workspace-content-toolbar flex h-10 items-center justify-between border-b border-[var(--inno-border)] bg-[var(--inno-surface)] px-3">
 				<div className="flex min-w-0 flex-1 items-center gap-2">
-					<button
-						type="button"
-						className="inno-workspace-pane-toggle flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--inno-text-subtle)] transition-colors hover:bg-[var(--inno-surface-muted)] hover:text-[var(--inno-text)]"
+					<IconButton
+						size="xs"
+						className="inno-workspace-pane-toggle shrink-0"
 						onClick={onToggleSidebar}
 						title={sidebarOpen ? t("common.collapseSidebar", "收起侧栏") : t("common.expandSidebar", "展开侧栏")}
 						aria-label={sidebarOpen ? t("common.collapseSidebar", "收起侧栏") : t("common.expandSidebar", "展开侧栏")}
 					>
 						{sidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
-					</button>
+					</IconButton>
 					<span className={`inno-stream-status-dot ${isStreaming ? "is-streaming" : ""}`} />
 					<div className="min-w-0">
 						<div className="truncate text-sm font-medium">{preview.title}</div>
@@ -535,24 +540,24 @@ function StreamingPreviewPane({ preview, onToggleSidebar, sidebarOpen }: { previ
 					</div>
 				</div>
 				<div className="flex items-center gap-1.5">
-					<button
+					<Button
+						variant="secondary"
+						size="xs"
 						disabled={!preview.content}
-						className="flex h-7 items-center gap-1 rounded-md border border-[var(--inno-border)] px-2.5 text-xs text-[var(--inno-text-muted)] transition-colors hover:bg-[var(--inno-surface-muted)] hover:text-[var(--inno-text)] disabled:cursor-not-allowed disabled:opacity-40"
 						onClick={copyContent}
 					>
 						{copied ? <Check size={12} /> : <Copy size={12} />}
 						{copied ? t("common.copied", "已复制") : t("common.copy", "复制")}
-					</button>
+					</Button>
 					{isStreaming ? null : (
-						<button
-							type="button"
-							className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--inno-text-muted)] transition-colors hover:bg-[var(--inno-surface-muted)] hover:text-[var(--inno-text)]"
+						<IconButton
+							size="xs"
 							title={t("preview.streamingClose", "关闭生成预览")}
 							aria-label={t("preview.streamingClose", "关闭生成预览")}
 							onClick={() => workspaceStore.clearStreamingPreview(preview.id)}
 						>
 							<X size={14} />
-						</button>
+						</IconButton>
 					)}
 				</div>
 			</div>
@@ -616,24 +621,24 @@ function FileContentPane({ onToggleSidebar, sidebarOpen }: { onToggleSidebar: ()
 						<div className="truncate text-[10px] text-[var(--inno-text-muted)]">{t("files.editing", "Editing")} · {state.file.path}</div>
 					</div>
 					<div className="flex items-center gap-1.5">
-						<button
-							type="button"
+						<Button
+							size="xs"
+							variant="primary"
 							disabled={state.isSaving}
-							className="flex h-7 items-center gap-1 rounded-md inno-primary-button px-2.5 text-xs text-white disabled:opacity-50"
 							onClick={() => void workspaceStore.saveFile()}
 						>
 							<Save size={12} />
 							{t("common.save", "Save")}
-						</button>
-						<button
-							type="button"
+						</Button>
+						<Button
+							size="xs"
+							variant="secondary"
 							disabled={state.isSaving}
-							className="flex h-7 items-center gap-1 rounded-md border border-[var(--inno-border)] px-2.5 text-xs text-[var(--inno-text-muted)] hover:bg-[var(--inno-surface-muted)] disabled:opacity-50"
 							onClick={() => workspaceStore.cancelEditing()}
 						>
 							<X size={12} />
 							{t("common.cancel", "Cancel")}
-						</button>
+						</Button>
 					</div>
 				</div>
 				{/* Editor body */}
@@ -653,15 +658,15 @@ function FileContentPane({ onToggleSidebar, sidebarOpen }: { onToggleSidebar: ()
 		<div className="flex h-full flex-col">
 			<div className="inno-workspace-content-toolbar flex h-10 items-center justify-between border-b border-[var(--inno-border)] bg-[var(--inno-surface)] px-3">
 				<div className="flex min-w-0 flex-1 items-center gap-2">
-					<button
-						type="button"
-						className="inno-workspace-pane-toggle flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--inno-text-subtle)] hover:bg-[var(--inno-surface-muted)] hover:text-[var(--inno-text)]"
+					<IconButton
+						size="xs"
+						className="inno-workspace-pane-toggle shrink-0"
 						onClick={onToggleSidebar}
 						title={sidebarOpen ? t("common.collapseSidebar", "Collapse sidebar") : t("common.expandSidebar", "Expand sidebar")}
 						aria-label={sidebarOpen ? t("common.collapseSidebar", "Collapse sidebar") : t("common.expandSidebar", "Expand sidebar")}
 					>
 						{sidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
-					</button>
+					</IconButton>
 					<div className="min-w-0">
 						{state.file ? <FileName name={state.file.name} className="text-sm font-medium" /> : <div className="text-sm font-medium">{t("preview.noFile", "No file selected")}</div>}
 						<div className="truncate text-[10px] text-[var(--inno-text-muted)]">
@@ -672,14 +677,14 @@ function FileContentPane({ onToggleSidebar, sidebarOpen }: { onToggleSidebar: ()
 				<div className="flex items-center gap-2">
 					{state.file ? <RunButton filePath={state.file.path} /> : null}
 					{canEdit && (
-						<button
-							type="button"
-							className="flex h-7 items-center gap-1 rounded-md border border-[var(--inno-border)] px-2.5 text-xs text-[var(--inno-text-muted)] hover:bg-[var(--inno-surface-muted)] hover:text-[var(--inno-text)]"
+						<Button
+							variant="secondary"
+							size="xs"
 							onClick={() => workspaceStore.startEditing()}
 						>
 							<Pencil size={12} />
 							{t("common.edit", "Edit")}
-						</button>
+						</Button>
 					)}
 				</div>
 			</div>
@@ -759,7 +764,7 @@ function Node({ node, style, dragHandle, onPreviewFile }: NodeRendererProps<Arbo
 	const multiSelect = useContext(WorkspaceMultiSelectContext);
 	const selected = multiSelect.enabled ? multiSelect.selectedIds.has(node.data.path) : node.isSelected;
 
-	return (
+	const row = (
 		<div
 			// Files use the native file-binding drag source below. Keeping the
 			// arborist drag handle on the same element makes react-dnd treat the
@@ -773,7 +778,6 @@ function Node({ node, style, dragHandle, onPreviewFile }: NodeRendererProps<Arbo
 					? "bg-[var(--inno-accent-soft)] text-[var(--inno-accent)]"
 					: "text-[var(--inno-text-muted)] hover:bg-[var(--inno-surface-muted)] hover:text-[var(--inno-text)]"
 			} ${isFileDragSource ? "inno-smart-ws-drag-row" : ""}`}
-			title={isFileDragSource ? t("chat.smartInput.dragToAttach", "拖到输入框添加到文件区") : undefined}
 			onDragStart={(event) => {
 				if (!isFileDragSource) return;
 				event.stopPropagation();
@@ -878,9 +882,10 @@ function Node({ node, style, dragHandle, onPreviewFile }: NodeRendererProps<Arbo
 				{nodeIcon(node.data.name, isDir, node.isOpen)}
 			</span>
 			{node.isEditing ? (
-				<input
+				<Input
+					size="sm"
 					autoFocus
-					className="min-w-0 flex-1 rounded border border-[var(--inno-accent)] bg-[var(--inno-surface)] px-1 py-0.5 text-xs outline-none focus-visible:shadow-[var(--inno-ring)]"
+					className="min-w-0 flex-1 rounded border border-[var(--inno-border)] bg-[var(--inno-surface)] px-1 py-0.5 text-xs outline-none"
 					defaultValue={node.data.name}
 					onFocus={(e) => {
 						const val = e.currentTarget.value;
@@ -901,6 +906,9 @@ function Node({ node, style, dragHandle, onPreviewFile }: NodeRendererProps<Arbo
 			)}
 		</div>
 	);
+	return isFileDragSource
+		? <Tooltip label={t("chat.smartInput.dragToAttach", "拖到输入框添加到文件区")}>{row}</Tooltip>
+		: row;
 }
 
 /* ---------- Context Menu ---------- */
@@ -952,12 +960,12 @@ function DeleteConfirm({ paths, onConfirm, onCancel }: { paths: string[]; onConf
 					{names.length === 1 ? names[0] : `${names.length} items`}
 				</div>
 				<div className="flex justify-end gap-2">
-					<button className="rounded-md border border-[var(--inno-border)] px-3 py-1.5 text-xs text-[var(--inno-text)] hover:bg-[var(--inno-surface-muted)]" onClick={onCancel}>
+					<Button variant="secondary" size="xs" onClick={onCancel}>
 						{t("common.cancel", "Cancel")}
-					</button>
-					<button className="rounded-md bg-[var(--inno-danger)] px-3 py-1.5 text-xs text-white hover:bg-[var(--inno-danger)]" onClick={onConfirm}>
+					</Button>
+					<Button variant="danger" size="xs" onClick={onConfirm}>
 						{t("common.delete", "Delete")}
-					</button>
+					</Button>
 				</div>
 			</div>
 		</>
@@ -981,12 +989,11 @@ function ArtifactPreviewCard({ file, workspaceId, onOpen }: { file: WorkspaceFil
 		: "";
 	return (
 			<div className="inno-workspace-selection-card relative flex shrink-0 items-start gap-2.5 border-b border-[var(--inno-border)] bg-[var(--inno-surface)] px-3 py-2.5">
-				<span
-					className="absolute right-2 top-2 rounded bg-[var(--inno-accent-soft)] px-1.5 py-0.5 text-[10px] font-medium leading-none text-[var(--inno-accent)]"
-					title={selectedLabel}
-				>
-				{t("files.selected", "已选中")}
-			</span>
+				<Tooltip label={selectedLabel}>
+					<span className="absolute right-2 top-2 rounded bg-[var(--inno-accent-soft)] px-1.5 py-0.5 text-[10px] font-medium leading-none text-[var(--inno-accent)]">
+						{t("files.selected", "已选中")}
+					</span>
+				</Tooltip>
 			<div
 				className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--inno-border)]"
 				style={{ background: tone.bg, color: tone.fg }}
@@ -995,7 +1002,9 @@ function ArtifactPreviewCard({ file, workspaceId, onOpen }: { file: WorkspaceFil
 				{artifactIcon(file.name, file.kind)}
 			</div>
 			<div className="min-w-0 flex-1 pr-1">
-				<div className="truncate text-[12.5px] font-semibold text-[var(--inno-text)]" title={file.name}>{file.name}</div>
+				<Tooltip label={file.name}>
+					<div className="truncate text-[12.5px] font-semibold text-[var(--inno-text)]">{file.name}</div>
+				</Tooltip>
 				<div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 text-[10.5px] text-[var(--inno-text-subtle)]">
 					<span className="shrink-0 whitespace-nowrap">{kindLabel}</span>
 					{file.size !== undefined ? <span aria-hidden="true">·</span> : null}
@@ -1003,31 +1012,34 @@ function ArtifactPreviewCard({ file, workspaceId, onOpen }: { file: WorkspaceFil
 					{updated ? (
 						<>
 							<span aria-hidden="true">·</span>
-							<time className="shrink-0 whitespace-nowrap" dateTime={file.updatedAt} title={file.updatedAt}>{updated}</time>
+							<Tooltip label={file.updatedAt ?? updated}>
+								<time className="shrink-0 whitespace-nowrap" dateTime={file.updatedAt}>{updated}</time>
+							</Tooltip>
 						</>
 					) : null}
 				</div>
 			</div>
 			<div className="mt-4 flex shrink-0 items-center gap-1">
-				<button
-					type="button"
-					className="inno-workspace-selection-action flex h-7 items-center gap-1 rounded-md px-2 text-[11px]"
+				<Button
+					variant="ghost"
+					size="xs"
+					className="inno-workspace-selection-action"
 					title={t("common.open", "打开")}
 					aria-label={t("common.open", "打开")}
 					onClick={onOpen}
 				>
 					<ExternalLink size={12} />
 					{t("common.open", "打开")}
-				</button>
-				<button
-					type="button"
-					className="inno-workspace-selection-action flex h-7 w-7 items-center justify-center rounded-md"
+				</Button>
+				<IconButton
+					size="xs"
+					className="inno-workspace-selection-action"
 					title={t("common.download", "下载")}
 					aria-label={t("common.download", "下载")}
 					onClick={() => triggerDownload(workspaceFileUrl(file.path, workspaceId, true))}
 				>
 					<Download size={13} />
-				</button>
+				</IconButton>
 			</div>
 		</div>
 	);
@@ -1421,31 +1433,31 @@ export function WorkspaceBrowser({ onPreviewFile, dndManager }: { onPreviewFile?
 				{/* Toolbar */}
 				<div className="inno-workspace-subheader inno-workspace-tree-toolbar flex h-10 items-center gap-1 border-b border-[var(--inno-border)] bg-[var(--inno-surface)] px-2.5">
 					<div className="min-w-0 flex-1">
-						<span className="flex max-w-[220px] items-center gap-1.5 truncate px-1 text-xs font-medium text-[var(--inno-text)]" title={activeWorkspaceName}>
-							<FolderOpen size={14} className="shrink-0 text-[var(--inno-text-subtle)]" aria-hidden="true" />
-							{activeWorkspaceName || t("workspace.title")}
-						</span>
+						<Tooltip label={activeWorkspaceName || t("workspace.title")}>
+							<span className="flex max-w-[220px] items-center gap-1.5 truncate px-1 text-xs font-medium text-[var(--inno-text)]">
+								<FolderOpen size={14} className="shrink-0 text-[var(--inno-text-subtle)]" aria-hidden="true" />
+								{activeWorkspaceName || t("workspace.title")}
+							</span>
+						</Tooltip>
 					</div>
-					<button
-						disabled={busy}
-						className={`flex h-6 w-6 items-center justify-center rounded transition-colors disabled:opacity-40 ${
-							multiSelectMode
-								? "bg-[var(--inno-accent-soft)] text-[var(--inno-accent)]"
-								: "text-[var(--inno-text-subtle)] hover:bg-[var(--inno-surface-muted)] hover:text-[var(--inno-accent)]"
-						}`}
-						title={multiSelectMode ? t("files.exitMultiSelect", "Exit multi-select") : t("files.multiSelect", "Select multiple files")}
-						aria-label={multiSelectMode ? t("files.exitMultiSelect", "Exit multi-select") : t("files.multiSelect", "Select multiple files")}
-						aria-pressed={multiSelectMode}
-						onClick={toggleMultiSelectMode}
-					>
-						<ListChecks size={14} />
-					</button>
-					<button disabled={busy} className="flex h-6 w-6 items-center justify-center rounded text-[var(--inno-text-subtle)] transition-colors hover:bg-[var(--inno-surface-muted)] hover:text-[var(--inno-accent)] disabled:opacity-40" title={t("files.uploadSkill", "Upload skill package (.zip/.md) to .skills")} onClick={() => skillUploadRef.current?.click()}>
-						<Sparkles size={14} />
-					</button>
-					<button disabled={busy} className="flex h-6 w-6 items-center justify-center rounded text-[var(--inno-text-subtle)] transition-colors hover:bg-[var(--inno-surface-muted)] hover:text-[var(--inno-text)] disabled:opacity-40" title={t("preview.refresh", "Refresh")} onClick={() => void workspaceStore.loadTree()}>
-						<RefreshCw size={14} />
-					</button>
+				<IconButton
+					variant="ghost"
+					size="xs"
+					className="inno-workspace-selection-action"
+					disabled={busy}
+					title={multiSelectMode ? t("files.exitMultiSelect", "Exit multi-select") : t("files.multiSelect", "Select multiple files")}
+					aria-label={multiSelectMode ? t("files.exitMultiSelect", "Exit multi-select") : t("files.multiSelect", "Select multiple files")}
+					aria-pressed={multiSelectMode}
+					onClick={toggleMultiSelectMode}
+				>
+					<ListChecks size={14} />
+				</IconButton>
+				<IconButton size="xs" disabled={busy} aria-label={t("files.uploadSkill", "Upload skill package (.zip/.md) to .skills")} title={t("files.uploadSkill", "Upload skill package (.zip/.md) to .skills")} onClick={() => skillUploadRef.current?.click()}>
+					<Sparkles size={14} />
+				</IconButton>
+				<IconButton size="xs" disabled={busy} aria-label={t("preview.refresh", "Refresh")} title={t("preview.refresh", "Refresh")} onClick={() => void workspaceStore.loadTree()}>
+					<RefreshCw size={14} />
+				</IconButton>
 					<input ref={skillUploadRef} type="file" multiple accept=".zip,application/zip,.md,text/markdown" className="hidden" onChange={handleSkillUploadChange} />
 				</div>
 
@@ -1454,19 +1466,17 @@ export function WorkspaceBrowser({ onPreviewFile, dndManager }: { onPreviewFile?
 					{FILTER_ORDER.map((filter) => {
 						const active = typeFilter === filter;
 						return (
-							<button
+							<Button
 								key={filter}
-								type="button"
+								variant={active ? "primary" : "secondary"}
+								size="xs"
+								shape="pill"
+								className="inno-filter-button"
 								aria-pressed={active}
-								className={`rounded-[13px] border px-3 py-1 text-xs transition-colors ${
-									active
-										? "border-[var(--inno-send-bg)] bg-[var(--inno-send-bg)] text-[var(--inno-send-fg)]"
-										: "border-[var(--inno-border)] bg-[var(--inno-surface)] text-[var(--inno-text-muted)] hover:bg-[var(--inno-surface-muted)] hover:text-[var(--inno-text)]"
-								}`}
 								onClick={() => setTypeFilter(filter)}
 							>
 								{t(`workspace.filters.${filter}`)}
-							</button>
+							</Button>
 						);
 					})}
 				</div>
@@ -1494,15 +1504,16 @@ export function WorkspaceBrowser({ onPreviewFile, dndManager }: { onPreviewFile?
 								? t("files.selectedCount", "Selected {{count}} files", { count: selectedFileIds.length })
 								: t("files.fileSelectionOnly", "Select files (folders cannot be selected)")}
 						</span>
-						<button
+						<Button
+							variant="danger"
+							size="xs"
 							disabled={selectedFileIds.length === 0 || busy}
-							className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-[var(--inno-danger)] transition-colors hover:bg-[var(--inno-surface)] disabled:cursor-not-allowed disabled:opacity-40"
 							title={t("files.deleteSelected", "Delete selected files")}
 							onClick={() => setDeleteConfirm({ ids: selectedFileIds })}
 						>
 							<Trash2 size={12} />
 							{t("common.delete", "Delete")}
-						</button>
+						</Button>
 					</div>
 				) : null}
 

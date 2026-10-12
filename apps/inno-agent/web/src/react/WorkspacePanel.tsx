@@ -12,11 +12,14 @@ import { workspaceStore } from "../stores/workspace-store.js";
 import type { WorkspaceTreeNode } from "../types/workspace.js";
 import { ensureWindowForPanel } from "../stores/window-expansion.js";
 import { useStoreSnapshot } from "./hooks.js";
+import { Button } from "./ui/Button.js";
+import { Tooltip } from "./ui/Tooltip.js";
 import { isDynamicImportError, recoverFromDynamicImportError } from "../utils/dynamic-import-recovery.js";
 
 interface WorkspacePanelProps {
 	mode: WorkspaceMode;
 	width: number;
+	showTerminalToggle?: boolean;
 	onModeChange(mode: WorkspaceMode): void;
 	onWidthChange(width: number): void;
 	onPreviewFile(width: number): void | Promise<void>;
@@ -87,9 +90,9 @@ class WorkspaceContentErrorBoundary extends Component<
 							{this.state.error.message}
 						</div>
 					) : null}
-					<button
-						type="button"
-						className="inno-primary-button rounded-md px-3 py-1.5 text-xs text-white"
+					<Button
+						variant="primary"
+						size="xs"
 						onClick={() => {
 							// A failed dynamic import is cached by the browser for the
 							// current document. Re-mounting React.lazy with the same
@@ -104,14 +107,15 @@ class WorkspaceContentErrorBoundary extends Component<
 						}}
 					>
 						Retry panel
-					</button>
-					<button
-						type="button"
-						className="text-xs text-[var(--inno-text-muted)] underline underline-offset-2"
+					</Button>
+					<Button
+						variant="ghost"
+						size="xs"
+						className="underline underline-offset-2"
 						onClick={() => window.location.reload()}
 					>
 						Refresh page
-					</button>
+					</Button>
 				</div>
 			);
 		}
@@ -139,7 +143,7 @@ function WorkspaceContentFallback() {
 	);
 }
 
-function WorkspacePanelContent({ mode, width, onModeChange, onWidthChange, onPreviewFile }: WorkspacePanelProps) {
+function WorkspacePanelContent({ mode, width, onModeChange, onWidthChange, onPreviewFile, showTerminalToggle = true }: WorkspacePanelProps) {
 	const { t } = useTranslation();
 	const dndManager = useDragDropManager();
 	const [isResizing, setIsResizing] = useState(false);
@@ -186,7 +190,7 @@ function WorkspacePanelContent({ mode, width, onModeChange, onWidthChange, onPre
 			);
 			const directMaxWidth = Math.max(
 				start.width,
-				getMaximumWorkspaceWidth(window.innerWidth, appStore.sidebarCollapsed, mode),
+				getMaximumWorkspaceWidth(window.innerWidth, appStore.sidebarCollapsed, mode, Boolean(window.innoDesktop)),
 			);
 			if (nextWidth <= directMaxWidth) {
 				// Keep the workspace attached to the pointer while the current
@@ -255,7 +259,7 @@ function WorkspacePanelContent({ mode, width, onModeChange, onWidthChange, onPre
 		// Invalidate a previous asynchronous commit if the user starts another
 		// resize before a host-window expansion has finished.
 		resizeCommitGenerationRef.current += 1;
-		const layoutMaxWidth = getMaximumWorkspaceWidth(window.innerWidth, appStore.sidebarCollapsed, mode);
+		const layoutMaxWidth = getMaximumWorkspaceWidth(window.innerWidth, appStore.sidebarCollapsed, mode, Boolean(window.innoDesktop));
 		const startWidth = clampResizeWidth(width, mode, Math.max(width, layoutMaxWidth));
 		resizeMaxWidthRef.current = Math.max(startWidth, layoutMaxWidth);
 		resizeStartRef.current = {
@@ -289,7 +293,7 @@ function WorkspacePanelContent({ mode, width, onModeChange, onWidthChange, onPre
 					WORKSPACE_MAX_WIDTH,
 					Math.max(
 						resizeMaxWidthRef.current,
-						getMaximumWorkspaceWidth(expandedViewportWidth, appStore.sidebarCollapsed, mode),
+						getMaximumWorkspaceWidth(expandedViewportWidth, appStore.sidebarCollapsed, mode, Boolean(window.innoDesktop)),
 					),
 				);
 				const maxWidth = resizeMaxWidthRef.current;
@@ -319,15 +323,16 @@ function WorkspacePanelContent({ mode, width, onModeChange, onWidthChange, onPre
 	}, [dndManager]);
 
 	return (
-		<aside className={`workspace-panel inno-workspace-scope relative flex h-full min-h-0 min-w-0 flex-col ${resizePreviewWidth !== null ? "workspace-resize-preview-active" : ""} ${collapsed ? "overflow-visible border-l-0 bg-transparent" : "overflow-hidden border-l border-[var(--inno-border)] bg-[var(--inno-workspace-bg)]"}`}>
+		<aside className={`workspace-panel inno-workspace-scope ${collapsed ? "" : "inno-desktop-panel-surface"} relative flex h-full min-h-0 min-w-0 flex-col ${resizePreviewWidth !== null ? "workspace-resize-preview-active" : ""} ${collapsed ? "overflow-visible border-l-0 bg-transparent" : "overflow-hidden border-l border-[var(--inno-border)] bg-[var(--inno-workspace-bg)]"}`}>
 			{resizePreviewPortal}
 			{mode === "half" || mode === "quarter" ? (
-				<button
-					className="workspace-resize-handle"
-					aria-label={t("workspace.resize") ?? ""}
-					title={`${t("workspace.resize")} (${width}px)`}
-					onPointerDown={startResize}
-				/>
+				<Tooltip label={`${t("workspace.resize")} (${width}px)`}>
+					<button
+						className="workspace-resize-handle"
+						aria-label={t("workspace.resize") ?? ""}
+						onPointerDown={startResize}
+					/>
+				</Tooltip>
 			) : null}
 
 			{/* Panel header — mirrors the design mockup's artifact-panel head:
@@ -338,25 +343,29 @@ function WorkspacePanelContent({ mode, width, onModeChange, onWidthChange, onPre
 					<span className="whitespace-nowrap text-[11.5px] text-[var(--inno-text-subtle)]">{t("workspace.fileCount", { count: fileCount })}</span>
 				</div>
 				<div className="inno-workspace-header-actions">
-					<button
-						type="button"
-						className={`inno-workspace-header-button ${terminalOpen ? "is-active" : ""}`}
-						title={(terminalOpen ? t("terminal.collapse") : t("terminal.expand")) ?? ""}
-						aria-label={(terminalOpen ? t("terminal.collapse") : t("terminal.expand")) ?? ""}
-						onClick={() => terminalStore.setOpen(!terminalOpen)}
-					>
-						<TerminalIcon size={15} strokeWidth={1.8} />
-					</button>
-					<button
-						type="button"
-						className={`inno-workspace-header-button ${mode === "full" ? "is-active" : ""} max-[960px]:hidden`}
-						title={mode === "full" ? (t("workspace.half") ?? "") : (t("workspace.full") ?? "")}
-						aria-label={mode === "full" ? (t("workspace.half") ?? "") : (t("workspace.full") ?? "")}
-						aria-pressed={mode === "full"}
-						onClick={() => onModeChange(mode === "full" ? "half" : "full")}
-					>
-						{mode === "full" ? <Minimize2 size={15} strokeWidth={1.8} /> : <Maximize2 size={15} strokeWidth={1.8} />}
-					</button>
+					{showTerminalToggle ? (
+						<Tooltip label={(terminalOpen ? t("terminal.collapse") : t("terminal.expand")) ?? ""}>
+							<button
+								type="button"
+								className={`inno-workspace-header-button ${terminalOpen ? "is-active" : ""}`}
+								aria-label={(terminalOpen ? t("terminal.collapse") : t("terminal.expand")) ?? ""}
+								onClick={() => terminalStore.setOpen(!terminalOpen)}
+							>
+								<TerminalIcon size={15} strokeWidth={1.8} />
+							</button>
+						</Tooltip>
+					) : null}
+					<Tooltip label={mode === "full" ? (t("workspace.half") ?? "") : (t("workspace.full") ?? "")}>
+						<button
+							type="button"
+							className={`inno-workspace-header-button ${mode === "full" ? "is-active" : ""} max-[960px]:hidden`}
+							aria-label={mode === "full" ? (t("workspace.half") ?? "") : (t("workspace.full") ?? "")}
+							aria-pressed={mode === "full"}
+							onClick={() => onModeChange(mode === "full" ? "half" : "full")}
+						>
+							{mode === "full" ? <Minimize2 size={15} strokeWidth={1.8} /> : <Maximize2 size={15} strokeWidth={1.8} />}
+						</button>
+					</Tooltip>
 					<span className="inno-workspace-header-toggle-slot" aria-hidden="true" />
 				</div>
 			</div>

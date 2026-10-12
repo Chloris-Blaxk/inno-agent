@@ -20,6 +20,28 @@
 			"skills": "技能目录"
 		}
 	},
+	"globalSearch": {
+		"open": "搜索",
+		"placeholder": "搜索对话、工作区、文件和知识…",
+		"tabs": {
+			"all": "全部",
+			"conversation": "对话",
+			"workspace": "工作区",
+			"file": "文件",
+			"knowledge": "知识"
+		},
+		"emptyPrompt": "输入关键词进行搜索",
+		"noResults": "没有找到匹配结果",
+		"loading": "正在搜索…",
+		"failed": "搜索失败",
+		"archived": "已归档",
+		"shortcuts": {
+			"move": "↑↓ 上下选择",
+			"open": "↵ 打开",
+			"switch": "←→ 切换类别",
+			"close": "Esc 关闭"
+		}
+	},
 	"workspace": {
 		"title": "工作区",
 		"switch": "切换工作区",
@@ -32,6 +54,7 @@
 		"tempWorkspaceLabel": "临时工作区",
 		"noResults": "没有找到工作区",
 		"openWorkspace": "打开工作区",
+		"collapseWorkspace": "收起工作区",
 		"collapse": "收起",
 		"half": "半屏",
 		"full": "全屏",
@@ -88,6 +111,10 @@
 		"remove": "移除",
 		"open": "打开",
 		"close": "关闭",
+		"back": "后退",
+		"forward": "前进",
+		"expandSidebar": "展开侧栏",
+		"collapseSidebar": "收起侧栏",
 		"pasteCollapsed": "«已粘贴 {{count}} 行»",
 		"pasteCollapsedUndo": "撤销粘贴",
 		"pasteCardCharCount": "{{count}} 字",
@@ -119,6 +146,8 @@
 		"exportShowcaseFailed": "导出回放案例失败：{{message}}"
 	},
 	"nav": {
+		"primary": "主导航",
+		"chat": "对话",
 		"newChat": "新建会话",
 		"workbench": "工作台",
 		"notebook": "笔记本",
@@ -146,6 +175,7 @@
 			"analysis": "分析"
 		},
 		"view": {
+			"label": "笔记本视图",
 			"graph": "知识图谱",
 			"page": "笔记"
 		},
@@ -154,6 +184,7 @@
 			"center": "居中",
 			"colorType": "页面类型",
 			"colorCommunity": "社区",
+			"colorMode": "图谱着色方式",
 			"communityStats": "{{count}} 个社区 · Q {{modularity}}",
 			"labels": "标签",
 			"size": "节点大小",
@@ -497,6 +528,7 @@
 		"uncategorized": "未分类",
 		"noResults": "无匹配技能",
 		"tabs": {
+			"label": "技能来源",
 			"mine": "我的技能",
 			"library": "技能库"
 		},
@@ -1137,8 +1169,16 @@
 	"sidebar": {
 		"expand": "展开",
 		"collapse": "折叠",
-		"loadWorkspace": "加载此工作区到预览面板",
+		"expandSidebar": "展开侧边栏",
+		"collapseSidebar": "收起侧边栏",
+		"loadWorkspace": "进入此工作区",
 		"newChatInWorkspace": "在此工作区新建对话",
+		"pinWorkspace": "置顶项目",
+		"unpinWorkspace": "取消置顶项目",
+		"movePinnedWorkspaceUp": "上移置顶项目",
+		"movePinnedWorkspaceDown": "下移置顶项目",
+		"workspaceActions": "项目操作",
+		"sessionActions": "对话操作",
 		"renameWorkspace": "重命名工作区",
 		"deleteWorkspace": "删除工作区",
 		"originChannel": "来源：{{channel}}",
@@ -1152,7 +1192,16 @@
 		"unpin": "取消置顶",
 		"ungrouped": "未分组",
 		"archived": "已归档",
+		"pinnedProjects": "置顶项目",
 		"recent": "最近",
+		"projects": "项目",
+		"newProject": "新建项目",
+		"newProjectPlaceholder": "输入项目名称",
+		"createProjectFailed": "创建项目失败",
+		"channels": "渠道",
+		"showMore": "显示更多",
+		"showLess": "收起",
+		"filterChannels": "筛选渠道",
 		"noConversations": "暂无对话",
 		"deleteConversation": "删除对话",
 		"workspaceLabel": "工作区:{{name}}",

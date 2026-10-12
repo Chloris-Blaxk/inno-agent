@@ -20,6 +20,28 @@
 			"skills": "Skill catalog"
 		}
 	},
+	"globalSearch": {
+		"open": "Search",
+		"placeholder": "Search conversations, workspaces, files, and knowledge…",
+		"tabs": {
+			"all": "All",
+			"conversation": "Chats",
+			"workspace": "Workspaces",
+			"file": "Files",
+			"knowledge": "Knowledge"
+		},
+		"emptyPrompt": "Enter a keyword to search",
+		"noResults": "No matching results",
+		"loading": "Searching…",
+		"failed": "Search failed",
+		"archived": "Archived",
+		"shortcuts": {
+			"move": "↑↓ Move",
+			"open": "↵ Open",
+			"switch": "←→ Switch category",
+			"close": "Esc Close"
+		}
+	},
 	"workspace": {
 		"title": "Workspace",
 		"switch": "Switch workspace",
@@ -32,6 +54,7 @@
 		"tempWorkspaceLabel": "Temporary workspace",
 		"noResults": "No workspaces found",
 		"openWorkspace": "Open workspace",
+		"collapseWorkspace": "Collapse workspace",
 		"collapse": "Collapse",
 		"half": "Half",
 		"full": "Full",
@@ -88,6 +111,10 @@
 		"remove": "Remove",
 		"open": "Open",
 		"close": "Close",
+		"back": "Back",
+		"forward": "Forward",
+		"expandSidebar": "Expand sidebar",
+		"collapseSidebar": "Collapse sidebar",
 		"pasteCollapsed": "«Pasted {{count}} lines»",
 		"pasteCollapsedUndo": "Undo paste",
 		"pasteCardCharCount": "{{count}} chars",
@@ -119,6 +146,8 @@
 		"exportShowcaseFailed": "Failed to export replay case: {{message}}"
 	},
 	"nav": {
+		"primary": "Primary navigation",
+		"chat": "Chat",
 		"newChat": "New chat",
 		"workbench": "Workbench",
 		"notebook": "Notebook",
@@ -146,6 +175,7 @@
 			"analysis": "Analysis"
 		},
 		"view": {
+			"label": "Notebook view",
 			"graph": "Knowledge Graph",
 			"page": "Notes"
 		},
@@ -154,6 +184,7 @@
 			"center": "Center",
 			"colorType": "Page type",
 			"colorCommunity": "Community",
+			"colorMode": "Graph color mode",
 			"communityStats": "{{count}} communities · Q {{modularity}}",
 			"labels": "Labels",
 			"size": "Node size",
@@ -497,6 +528,7 @@
 		"uncategorized": "Uncategorized",
 		"noResults": "No matching skills",
 		"tabs": {
+			"label": "Skill source",
 			"mine": "My Skills",
 			"library": "Library"
 		},
@@ -1137,8 +1169,16 @@
 	"sidebar": {
 		"expand": "Expand",
 		"collapse": "Collapse",
-		"loadWorkspace": "Load this workspace into the preview panel",
+		"expandSidebar": "Expand sidebar",
+		"collapseSidebar": "Collapse sidebar",
+		"loadWorkspace": "Open this workspace",
 		"newChatInWorkspace": "New conversation in this workspace",
+		"pinWorkspace": "Pin project",
+		"unpinWorkspace": "Unpin project",
+		"movePinnedWorkspaceUp": "Move pinned project up",
+		"movePinnedWorkspaceDown": "Move pinned project down",
+		"workspaceActions": "Project actions",
+		"sessionActions": "Conversation actions",
 		"renameWorkspace": "Rename workspace",
 		"deleteWorkspace": "Delete workspace",
 		"originChannel": "Origin: {{channel}}",
@@ -1152,7 +1192,16 @@
 		"unpin": "Unpin",
 		"ungrouped": "Ungrouped",
 		"archived": "Archived",
+		"pinnedProjects": "Pinned projects",
 		"recent": "Recent",
+		"projects": "Projects",
+		"newProject": "New project",
+		"newProjectPlaceholder": "Enter a project name",
+		"createProjectFailed": "Failed to create project",
+		"channels": "Channels",
+		"showMore": "Show more",
+		"showLess": "Show less",
+		"filterChannels": "Filter by channel",
 		"noConversations": "No conversations",
 		"deleteConversation": "Delete conversation",
 		"workspaceLabel": "Workspace: {{name}}",

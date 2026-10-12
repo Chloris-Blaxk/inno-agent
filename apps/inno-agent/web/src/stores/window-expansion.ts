@@ -1,8 +1,8 @@
 import { appStore, type WorkspaceMode } from "./app-store.js";
 import {
 	CHAT_BASELINE_WIDTH,
-	SIDEBAR_WIDTH,
 	getEffectiveWorkspaceWidth,
+	getSidebarLayoutWidth,
 } from "./app-layout.js";
 
 export type WindowExpansionSide = "left" | "right";
@@ -82,7 +82,10 @@ export async function ensureWindowForPanel(
 	const currentWorkspaceMode = appStore.workspaceMode;
 	const workspaceWidth = requestedWorkspaceWidth ?? appStore.workspaceWidth;
 	const workspaceMode = requestedWorkspaceMode ?? currentWorkspaceMode;
-	const leftWidth = currentSidebarCollapsed && side !== "left" ? 0 : SIDEBAR_WIDTH;
+	const leftWidth = getSidebarLayoutWidth(
+		currentSidebarCollapsed && side !== "left",
+		Boolean(typeof window !== "undefined" && window.innoDesktop),
+	);
 	const rightWidth = currentWorkspaceMode === "collapsed" && side !== "right"
 		? 0
 		: getEffectiveWorkspaceWidth(workspaceWidth, workspaceMode === "collapsed" ? "half" : workspaceMode);

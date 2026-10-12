@@ -6,6 +6,7 @@ import type { PendingQuestion, QuestionAnswer, QuestionData, QuestionnaireResult
 import { chatStore } from "../stores/chat-store.js";
 import { normalizeMarkdownMath } from "../utils/markdown-math.js";
 import { AnsweredQuestionCard, OptionRow } from "./chat/AnsweredQuestionCard.js";
+import { Button, Input } from "./ui/index.js";
 
 // Re-exported so existing import sites keep working; the component itself
 // lives in the pure chat/ module (no store/api imports allowed there).
@@ -117,9 +118,8 @@ function QuestionTab({
 					))}
 
 					<div className="flex flex-col gap-1 pt-1">
-						<input
-							type="text"
-							className={`min-w-0 flex-1 rounded-md border px-2.5 py-1.5 text-[13px] focus-visible:outline-none focus-visible:shadow-[var(--inno-ring)] ${
+						<Input
+							className={`min-w-0 flex-1 rounded-md px-2.5 py-1.5 text-[13px] ${
 								hasOptionAnswer
 									? "cursor-not-allowed border-[var(--inno-border)] bg-[var(--inno-surface-muted)] text-[var(--inno-text-subtle)]"
 									: "border-[var(--inno-border)] bg-[var(--inno-surface)] text-[var(--inno-text)] focus-visible:border-[var(--inno-focus-border)]"
@@ -289,13 +289,14 @@ export function QuestionDialog({ pending }: { pending: PendingQuestion }) {
 							{activeTab + 1} / {questions.length}
 						</span>
 					) : null}
-					<button
-						className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${ canContinue ? "inno-primary-button" : "cursor-not-allowed bg-[var(--inno-surface-muted)] text-[var(--inno-text-subtle)]" }`}
+					<Button
+						variant="primary"
+						size="md"
 						disabled={!canContinue}
 						onClick={handleClick}
 					>
 						{isLast ? t("question.submit") : t("question.submitNext")}
-					</button>
+					</Button>
 				</div>
 			</div>
 		</motion.div>

@@ -46,8 +46,11 @@
 	--inno-surface-muted: #f1f4f9;
 	--inno-surface-raised: #fbfcfe;
 	--inno-sidebar-bg: #f8fafd;
+	--inno-sidebar-expanded-bg: #f5f7fa;
+	--inno-sidebar-preview-bg: #f8fafd;
 	--inno-sidebar-active: #dde3ea;
 	--inno-chat-bg: #ffffff;
+	--inno-window-chrome-bg: #f8fafd;
 	--inno-workspace-bg: #f8fafd;
 	--inno-workspace-chrome: #f1f4f9;
 	--inno-border: #e5e9f0;
@@ -70,9 +73,6 @@
 	/* Brand & decorative tokens (InnoSpark harness design language) */
 	--inno-brand-1: #6b93ff;
 	--inno-brand-2: #584cff;
-	--inno-glow-1: rgba(168, 199, 250, 0.55);
-	--inno-glow-2: rgba(198, 218, 251, 0.35);
-	--inno-glow-3: rgba(230, 240, 254, 0.18);
 	--inno-user-bubble-bg: #e9eef6;
 	--inno-card-bg: #ffffff;
 	--inno-chip-bg: #f1f4f9;
@@ -86,7 +86,7 @@
 	--inno-send-bg-hover: #000000;
 	--inno-shadow-composer: 0 1px 3px rgba(60, 64, 67, 0.18), 0 4px 12px rgba(60, 64, 67, 0.10);
 	--inno-window-chrome-height: 40px;
-	--inno-window-chrome-control-left: 96px;
+	--inno-window-chrome-control-left: 80px;
 	--inno-window-chrome-control-size: 30px;
 	--inno-window-chrome-control-top: calc((var(--inno-window-chrome-height) - var(--inno-window-chrome-control-size)) / 2 + 5px);
 	--inno-window-chrome-title-inset: 136px;
@@ -107,7 +107,7 @@
 	--inno-success-border: color-mix(in srgb, var(--inno-success) 22%, transparent);
 	--inno-warning-bg: color-mix(in srgb, var(--inno-warning) 12%, transparent);
 	--inno-warning-border: color-mix(in srgb, var(--inno-warning) 22%, transparent);
-	--inno-focus-border: var(--inno-accent);
+	--inno-focus-border: var(--inno-border-strong);
 
 	color: var(--inno-text);
 	background: var(--inno-background);
@@ -167,12 +167,23 @@ button {
 }
 
 button:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible,
 summary:focus-visible {
 	outline: none;
 	box-shadow: var(--inno-ring);
+}
+
+:root[data-inno-input-modality="pointer"] button:focus-visible,
+:root[data-inno-input-modality="pointer"] summary:focus-visible {
+	outline: none;
+	box-shadow: none;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+	border-color: var(--inno-border-strong);
+	outline: none;
+	box-shadow: none;
 }
 
 ::selection {
@@ -505,13 +516,6 @@ summary:focus-visible {
 	gap: 0.125rem;
 }
 
-.inno-markdown-toolbar-group--modes {
-	gap: 0;
-	padding: 0.125rem;
-	border-radius: 0.5rem;
-	background: color-mix(in srgb, var(--inno-content-border) 28%, transparent);
-}
-
 .inno-markdown-toolbar-divider {
 	width: 1px;
 	height: 1rem;
@@ -519,8 +523,7 @@ summary:focus-visible {
 	background: color-mix(in srgb, var(--inno-content-border) 82%, transparent);
 }
 
-.inno-markdown-toolbar-button,
-.inno-markdown-toolbar-segment {
+.inno-markdown-toolbar-button {
 	display: inline-flex;
 	width: var(--inno-content-control-size);
 	height: var(--inno-content-control-size);
@@ -536,8 +539,7 @@ summary:focus-visible {
 	transition: background-color 120ms ease, color 120ms ease, opacity 120ms ease;
 }
 
-.inno-markdown-toolbar-button.has-label,
-.inno-markdown-toolbar-segment.has-label {
+.inno-markdown-toolbar-button.has-label {
 	width: auto;
 	min-width: var(--inno-content-control-size);
 	flex-basis: auto;
@@ -552,82 +554,37 @@ summary:focus-visible {
 	line-height: 1;
 }
 
-.inno-markdown-toolbar-button:hover:not(:disabled),
-.inno-markdown-toolbar-segment:hover:not(:disabled) {
+.inno-markdown-toolbar-button:hover:not(:disabled) {
 	background: var(--inno-content-control-hover);
 	color: var(--inno-text);
 }
 
-.inno-markdown-toolbar-button.is-active,
-.inno-markdown-toolbar-segment.is-active,
-.inno-markdown-toolbar-segment[aria-selected="true"] {
+.inno-markdown-toolbar-button.is-active {
 	background: var(--inno-surface);
 	color: var(--inno-text);
 	box-shadow: 0 1px 3px color-mix(in srgb, var(--inno-text) 14%, transparent);
 }
 
-.inno-markdown-toolbar-button:disabled,
-.inno-markdown-toolbar-segment:disabled {
+.inno-markdown-toolbar-button:disabled {
 	cursor: not-allowed;
 	opacity: 0.38;
 }
 
 .inno-markdown-toolbar-button:focus-visible,
-.inno-markdown-toolbar-segment:focus-visible,
 .inno-markdown-toolbar-menu-item:focus-visible {
 	outline: none;
 	box-shadow: var(--inno-ring);
 }
 
-.inno-markdown-toolbar-menu-anchor {
-	position: relative;
-	display: inline-flex;
-}
-
 .inno-markdown-toolbar-menu {
-	position: absolute;
-	top: calc(100% + 0.25rem);
-	right: 0;
-	z-index: 40;
 	min-width: 11rem;
-	padding: 0.25rem;
-	border: 1px solid var(--inno-content-border);
-	border-radius: 0.625rem;
-	background: var(--inno-surface-raised);
-	box-shadow: 0 8px 24px color-mix(in srgb, var(--inno-text) 10%, transparent);
 }
 
-.inno-markdown-toolbar-menu-item {
-	display: flex;
-	width: 100%;
-	min-height: 1.75rem;
-	align-items: center;
-	gap: 0.5rem;
-	padding: 0.375rem 0.5rem;
-	border: 0;
-	border-radius: 0.4rem;
-	background: transparent;
+.inno-markdown-link-confirm {
+	width: min(18rem, calc(100vw - 16px));
+	padding: 10px;
 	color: var(--inno-text);
-	font: inherit;
-	font-size: 0.75rem;
-	text-align: left;
-	cursor: pointer;
-}
-
-.inno-markdown-toolbar-menu-item > span:first-child {
-	display: inline-flex;
-	width: 1rem;
-	justify-content: center;
-	color: var(--inno-text-muted);
-}
-
-.inno-markdown-toolbar-menu-item:hover:not(:disabled) {
-	background: var(--inno-content-control-hover);
-}
-
-.inno-markdown-toolbar-menu-item:disabled {
-	cursor: not-allowed;
-	opacity: 0.4;
+	font-size: 12px;
 }
 
 .inno-markdown [data-streamdown="code-block"] {
@@ -1136,6 +1093,11 @@ summary:focus-visible {
 	flex-wrap: wrap;
 }
 
+/* macOS keeps its native traffic lights above this renderer-owned overlay. */
+.inno-markdown-fullscreen.is-macos-window .inno-markdown-fullscreen-header {
+	padding-left: 88px;
+}
+
 .inno-markdown-fullscreen-title {
 	flex: 1 1 auto;
 	font-size: 0.8125rem;
@@ -1201,8 +1163,10 @@ summary:focus-visible {
 	}
 
 	.inno-markdown-toolbar-button,
-	.inno-markdown-toolbar-segment,
-	.inno-markdown-content-block--mermaid .inno-mermaid-chart-svg {
+	.inno-ui-segmented-control--toolbar .inno-ui-segmented-control__option,
+	.inno-markdown-content-block--mermaid .inno-mermaid-chart-svg,
+	.app-layout--desktop > :nth-child(1),
+	.inno-desktop-sidebar-panel {
 		transition-duration: 0.001ms;
 	}
 }
@@ -1225,6 +1189,40 @@ inno-app-shell {
 	min-height: 0;
 	overflow: hidden;
 	background: var(--inno-background);
+}
+
+.app-layout--desktop {
+	--sidebar-w: calc(var(--sidebar-rail-w) + var(--sidebar-content-w));
+	--inno-desktop-base-bg: var(--inno-window-chrome-bg, var(--inno-chat-bg));
+	--inno-desktop-panel-background: var(--inno-chat-bg);
+	--inno-desktop-panel-border: var(--inno-desktop-card-border, var(--inno-border));
+	--inno-desktop-panel-radius: 16px;
+	--inno-desktop-panel-shadow: var(--inno-shadow-panel, 0 0 0 1px rgba(60, 64, 67, 0.08), 0 0 6px rgba(60, 64, 67, 0.08), 0 2px 6px rgba(60, 64, 67, 0.08));
+	background: var(--inno-desktop-base-bg);
+}
+
+/* Windows already has a native title bar above the renderer. Start the app
+   toolbar at the normal content gutter instead of reserving space for the
+   macOS traffic lights. */
+.app-layout--desktop.app-layout--windows {
+	--inno-window-chrome-control-left: 12px;
+}
+
+.app-layout--desktop .inno-desktop-panel-surface {
+	border: 1px solid var(--inno-desktop-panel-border);
+	border-radius: var(--inno-desktop-panel-radius);
+	background: var(--inno-desktop-panel-background);
+	box-shadow: var(--inno-desktop-panel-shadow);
+}
+
+.app-layout--desktop.app-layout--macos-fullscreen {
+	--inno-window-chrome-control-left: 12px;
+	--inno-window-chrome-title-inset: 112px;
+}
+
+.app-layout--desktop.app-layout--sidebar-collapsed,
+.app-layout--desktop:not(.app-layout--chat) {
+	--sidebar-w: var(--sidebar-rail-w);
 }
 
 .app-layout::before {
@@ -1268,12 +1266,468 @@ inno-app-shell {
 	z-index: 3;
 }
 
+.app-layout--desktop > :nth-child(1) {
+	overflow: visible;
+	z-index: 3;
+}
+
 .app-layout > :nth-child(2) {
 	left: var(--sidebar-w);
 	right: var(--workspace-w);
 	overflow: hidden;
 	transition: left 220ms cubic-bezier(0.4, 0, 0.2, 1),
 		right 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Feature pages share the desktop shell's outer gutter and panel standards. */
+.app-layout--desktop:not(.app-layout--chat) .inno-feature-page {
+	background: var(--inno-desktop-base-bg);
+}
+
+/* Let the feature panel's left shadow extend over the icon rail, like the
+   desktop chat card. The page surface starts at the rail edge, so only its
+   shadow crosses into that area. */
+.app-layout--desktop:not(.app-layout--chat) > .inno-desktop-sidebar {
+	z-index: auto;
+}
+
+.app-layout--desktop:not(.app-layout--chat) .inno-desktop-sidebar-panel {
+	z-index: 5;
+}
+
+.app-layout--desktop:not(.app-layout--chat) > .inno-feature-page {
+	overflow: visible;
+	z-index: 4;
+}
+
+.app-layout--desktop:not(.app-layout--chat) .inno-feature-page-panel {
+	position: absolute;
+	inset: calc(var(--inno-window-chrome-height) + 2px) 3px 3px 0;
+	box-sizing: border-box;
+	display: flex;
+	min-height: 0;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.app-layout--desktop:not(.app-layout--chat) .inno-feature-page-scroll {
+	min-height: 0;
+	flex: 1 1 auto;
+	overflow-y: auto;
+}
+
+/* The session list and conversation share one rounded card. The navigation
+   rail stays outside the card, as in the desktop chat layout reference. */
+.app-layout--desktop.app-layout--chat {
+	--inno-desktop-card-border: var(--inno-border);
+	--inno-window-chrome-control-top: calc((var(--inno-window-chrome-height) - var(--inno-window-chrome-control-size)) / 2 + 5px);
+}
+
+.app-layout--desktop.app-layout--chat::before {
+	display: none;
+}
+
+/* The Electron chat toolbar owns the top 40px across all three columns. */
+.app-layout--desktop.app-layout--chat > :nth-child(-n + 3) {
+	top: var(--inno-window-chrome-height);
+}
+
+/* The icon rail stays outside the shared chat card. */
+.app-layout--desktop.app-layout--chat > .inno-desktop-sidebar {
+	position: absolute;
+	z-index: auto;
+	left: 0;
+	top: var(--inno-window-chrome-height);
+	bottom: 0;
+	width: var(--sidebar-rail-w);
+	height: auto;
+	background: transparent;
+}
+
+:root:not([data-theme="dark"]) .app-layout--desktop.app-layout--chat {
+	--inno-desktop-card-border: #e5e9f0;
+	--inno-chat-bg: #ffffff;
+}
+
+.app-layout--desktop.app-layout--chat .inno-sidebar-scope {
+	border-right: 0;
+}
+
+.app-layout--desktop.app-layout--chat .inno-sidebar-header {
+	padding-top: 12px;
+}
+
+.inno-desktop-sidebar {
+	position: relative;
+	height: 100%;
+	width: 100%;
+	overflow: visible;
+	--inno-desktop-rail-bg: var(--inno-sidebar-rail-bg, var(--inno-sidebar-bg));
+	background: var(--inno-sidebar-bg);
+}
+
+#session-sidebar {
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+#session-sidebar input,
+#session-sidebar textarea,
+#session-sidebar [contenteditable="true"] {
+	-webkit-user-select: text;
+	user-select: text;
+}
+
+/* Keep the Electron chat in a neutral light palette, scoped so browser and
+   non-chat layouts retain their existing colors. */
+:root:not([data-theme="dark"]) .app-layout--desktop.app-layout--chat .inno-desktop-sidebar,
+:root:not([data-theme="dark"]) .app-layout--desktop.app-layout--chat .inno-desktop-chat-history {
+    --inno-sidebar-bg: #f8fafd;
+	--inno-sidebar-active: #e8e8e8;
+	--inno-surface: #ffffff;
+	--inno-surface-muted: #f2f2f2;
+	--inno-surface-raised: #ffffff;
+	--inno-chip-bg: #f2f2f2;
+	--inno-border: #e5e9f0;
+    --inno-desktop-rail-bg: #f8fafd;
+}
+
+.app-layout--desktop.app-layout--chat .inno-desktop-sidebar-panel {
+	z-index: 2;
+}
+
+:root:not([data-theme="dark"]) .app-layout--desktop.app-layout--chat .inno-desktop-sidebar-panel {
+    border-color: var(--inno-desktop-card-border, var(--inno-border));
+}
+
+.inno-sidebar-scope .inno-sidebar-workspace-header:hover {
+	background-color: var(--inno-surface-muted);
+}
+
+.inno-sidebar-workspace-actions {
+	top: 50%;
+	right: calc(100% + 4px);
+	isolation: isolate;
+}
+
+.inno-sidebar-workspace-actions::before {
+	content: "";
+	position: absolute;
+	inset: -4px -3px -4px -20px;
+	z-index: 0;
+	border-radius: 9px;
+	background: linear-gradient(
+		to right,
+		transparent,
+		color-mix(in srgb, var(--inno-sidebar-panel-bg, var(--inno-sidebar-bg)) 84%, transparent) 18px,
+		var(--inno-sidebar-panel-bg, var(--inno-sidebar-bg)) 100%
+	);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	pointer-events: none;
+}
+
+.inno-sidebar-workspace-actions--compact::before {
+	display: none;
+}
+
+.inno-sidebar-workspace-actions--compact:not(.inno-sidebar-workspace-actions--compact-flow) {
+	position: absolute;
+	top: 50%;
+	right: 0;
+	transform: translateY(-50%);
+}
+
+.inno-sidebar-workspace-actions--compact-flow {
+	position: relative;
+	top: auto;
+	right: auto;
+	transform: none;
+}
+
+.inno-sidebar-workspace-actions > * {
+	position: relative;
+	z-index: 1;
+}
+
+@media (max-width: 768px) {
+	.inno-sidebar-workspace-actions--compact:not(.inno-sidebar-workspace-actions--compact-flow) {
+		position: relative;
+		top: auto;
+		right: auto;
+		transform: none;
+	}
+}
+
+.inno-desktop-sidebar-rail {
+	position: absolute;
+	inset: 0 auto 0 0;
+	z-index: 2;
+	box-sizing: border-box;
+	display: flex;
+	width: var(--sidebar-rail-w, 52px);
+	flex-direction: column;
+	align-items: center;
+	justify-content: space-between;
+	padding: calc(var(--inno-window-chrome-height) + 8px) 8px 10px;
+	background: var(--inno-desktop-rail-bg, var(--inno-sidebar-bg));
+}
+
+.app-layout--desktop.app-layout--chat .inno-desktop-sidebar-rail {
+	z-index: 0;
+}
+
+.app-layout--desktop.app-layout--chat .inno-desktop-sidebar-rail {
+	inset: 0 auto 0 0;
+	z-index: 0;
+	width: var(--sidebar-rail-w);
+	padding-top: 8px;
+	border-radius: 0;
+	background: var(--inno-desktop-rail-bg);
+}
+
+.inno-desktop-sidebar-rail-nav {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+}
+
+.inno-desktop-sidebar-rail-button {
+	display: inline-flex;
+	height: 36px;
+	width: 36px;
+	flex: 0 0 36px;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: 0;
+	border-radius: 10px;
+	background: transparent;
+	color: var(--inno-text-muted);
+	line-height: 0;
+	-webkit-app-region: no-drag;
+	touch-action: manipulation;
+	cursor: pointer;
+	transition: background-color 120ms ease, color 120ms ease;
+}
+
+.inno-desktop-sidebar-rail-button:hover,
+.inno-desktop-sidebar-rail-button[aria-current="page"] {
+	background: var(--inno-sidebar-active);
+	color: var(--inno-text);
+}
+
+.inno-desktop-sidebar-rail-account,
+.inno-desktop-sidebar-rail-account .inno-sidebar-user-trigger {
+	width: 36px;
+}
+
+.inno-desktop-sidebar-rail-account .inno-sidebar-user-trigger {
+	justify-content: center;
+	padding: 4px;
+	border-radius: 999px;
+}
+
+.inno-desktop-sidebar-panel {
+	position: absolute;
+	inset: 0 auto 0 var(--sidebar-rail-w, 52px);
+	z-index: 1;
+	box-sizing: border-box;
+	width: var(--sidebar-content-w, 246px);
+	overflow: hidden;
+	border: 1px solid var(--inno-desktop-card-border, var(--inno-border));
+	background: var(--inno-sidebar-panel-bg, var(--inno-sidebar-bg));
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition: opacity 120ms ease, visibility 0s linear 120ms;
+}
+
+/* Keep expanded and hover-preview surfaces independently themeable. */
+.inno-desktop-sidebar-panel.is-pinned {
+	--inno-sidebar-panel-bg: var(--inno-sidebar-expanded-bg, var(--inno-sidebar-bg));
+}
+
+.inno-desktop-sidebar-panel.is-preview {
+	--inno-sidebar-panel-bg: var(--inno-sidebar-preview-bg, var(--inno-sidebar-bg));
+}
+
+/* Keep sidebar content at its expanded width while the outer surface clips
+   during collapse/expand. This prevents labels and controls from reflowing. */
+.inno-desktop-sidebar-panel > .inno-sidebar-scope {
+	box-sizing: border-box;
+	background: var(--inno-sidebar-panel-bg, var(--inno-sidebar-bg));
+	flex: 0 0 calc(var(--sidebar-content-w, 246px) - 2px);
+	width: calc(var(--sidebar-content-w, 246px) - 2px);
+	min-width: calc(var(--sidebar-content-w, 246px) - 2px);
+}
+
+.inno-desktop-sidebar-panel.is-visible:not(.is-preview) {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transition-delay: 0s;
+}
+
+.app-layout--desktop.app-layout--chat.app-layout--sidebar-expanded .inno-desktop-sidebar-panel.is-pinned {
+	position: fixed;
+	top: calc(var(--inno-window-chrome-height) + 3px);
+	bottom: 3px;
+	left: calc(var(--sidebar-rail-w, 52px) + 1px);
+	width: var(--sidebar-content-w, 246px);
+	border-color: transparent var(--inno-desktop-card-border, var(--inno-border)) transparent transparent;
+	border-width: 1px;
+	border-bottom-color: var(--inno-desktop-card-border, var(--inno-border));
+	border-radius: 15px 0 0 15px;
+	clip-path: inset(0 0 0 0);
+	box-shadow: none;
+	transition:
+		top var(--inno-dur-modal) cubic-bezier(0.22, 1, 0.36, 1),
+		bottom var(--inno-dur-modal) cubic-bezier(0.22, 1, 0.36, 1),
+		left var(--inno-dur-modal) cubic-bezier(0.22, 1, 0.36, 1),
+		clip-path 220ms cubic-bezier(0.4, 0, 0.2, 1),
+		border-radius var(--inno-dur-modal) cubic-bezier(0.22, 1, 0.36, 1),
+		box-shadow var(--inno-dur-modal) cubic-bezier(0.22, 1, 0.36, 1),
+		opacity var(--inno-dur-modal) ease,
+		visibility 0s linear var(--inno-dur-modal);
+}
+
+.app-layout--desktop.app-layout--chat.app-layout--sidebar-expanded .inno-desktop-sidebar-panel.is-pinned.is-visible {
+	transition-delay: 0s;
+}
+
+/* On collapse, clip the sidebar surface while the chat grid track grows. */
+.app-layout--desktop.app-layout--chat .inno-desktop-sidebar-panel.is-pinned.is-collapsing {
+	position: fixed;
+	top: calc(var(--inno-window-chrome-height) + 3px);
+	bottom: 3px;
+	left: calc(var(--sidebar-rail-w, 52px) + 1px);
+	border-color: transparent;
+	border-width: 1px;
+	border-radius: 15px 0 0 15px;
+	clip-path: inset(0 100% 0 0);
+	box-shadow: none;
+	opacity: 1;
+	visibility: visible;
+	pointer-events: none;
+	transition:
+		clip-path 220ms cubic-bezier(0.4, 0, 0.2, 1),
+		border-right-color 120ms ease-out;
+}
+
+/* Fade the preview as one surface, with only a small horizontal drift. */
+.inno-desktop-sidebar-panel.is-preview {
+	position: fixed;
+	inset: calc(var(--inno-window-chrome-height) + 6px) auto 6px calc(var(--sidebar-rail-w, 52px) + 4px);
+	border: 1px solid var(--inno-desktop-card-border, var(--inno-border));
+	outline: none;
+	border-radius: 12px;
+	box-shadow: 0 8px 24px color-mix(in srgb, var(--inno-text) 10%, transparent);
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translate3d(-8px, 0, 0);
+	transition:
+		top var(--inno-dur-modal) cubic-bezier(0.22, 1, 0.36, 1),
+		bottom var(--inno-dur-modal) cubic-bezier(0.22, 1, 0.36, 1),
+		left var(--inno-dur-modal) cubic-bezier(0.22, 1, 0.36, 1),
+		border-radius var(--inno-dur-modal) cubic-bezier(0.22, 1, 0.36, 1),
+		box-shadow var(--inno-dur-modal) cubic-bezier(0.22, 1, 0.36, 1),
+		opacity var(--inno-dur-modal) cubic-bezier(0.4, 0, 1, 1),
+		transform var(--inno-dur-modal) cubic-bezier(0.4, 0, 1, 1),
+		visibility 0s linear var(--inno-dur-modal);
+}
+
+.inno-desktop-sidebar-panel.is-preview.is-visible {
+	opacity: 1;
+	transform: translate3d(0, 0, 0);
+	visibility: visible;
+	pointer-events: auto;
+	transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+	transition-delay: 0s;
+}
+
+.inno-desktop-sidebar-panel.is-immediate-dismiss {
+	transition: none !important;
+}
+
+/* Finish the pinned collapse without starting the preview's opacity fade. */
+.inno-desktop-sidebar-panel.is-collapse-settled {
+	position: fixed;
+	top: calc(var(--inno-window-chrome-height) + 3px);
+	right: auto;
+	bottom: 3px;
+	left: calc(var(--sidebar-rail-w, 52px) + 1px);
+	border-color: transparent;
+	border-width: 1px;
+	border-radius: 15px 0 0 15px;
+	clip-path: inset(0 100% 0 0);
+	box-shadow: none;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+	.inno-desktop-sidebar-panel.is-preview {
+		transition-duration: 0.01ms;
+		transition-delay: 0s;
+	}
+}
+
+.inno-sidebar-user-trigger--compact {
+	min-height: 36px;
+}
+
+/* One shell owns the outer clipping and radius. The rail sits beside it while
+   the history pane and chat occupy its two grid tracks. */
+.app-layout--desktop.app-layout--chat > .inno-desktop-chat-shell {
+	box-sizing: border-box;
+	position: absolute;
+	z-index: 1;
+	top: calc(var(--inno-window-chrome-height) + 2px);
+	bottom: 3px;
+	left: var(--sidebar-rail-w);
+	right: calc(var(--workspace-w) + 3px);
+	display: grid;
+	grid-template-columns: var(--sidebar-content-w) minmax(0, 1fr);
+	overflow: hidden;
+	transition: grid-template-columns 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-layout--desktop.app-layout--chat > .workspace-panel.inno-desktop-panel-surface {
+	height: auto;
+	top: calc(var(--inno-window-chrome-height) + 2px);
+	right: 3px;
+	bottom: 3px;
+	width: calc(var(--workspace-w) - 3px);
+}
+
+.app-layout--desktop.app-layout--chat.app-layout--workspace-full > .workspace-panel.inno-desktop-panel-surface {
+	left: var(--sidebar-w);
+	width: auto;
+}
+
+.app-layout--desktop.app-layout--chat > .inno-desktop-chat-shell.is-collapsed {
+	grid-template-columns: 0 minmax(0, 1fr);
+}
+
+.inno-desktop-chat-history {
+	box-sizing: border-box;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+	background: var(--inno-sidebar-bg);
+}
+
+.inno-desktop-chat-content {
+	grid-column: 2;
+	width: 100%;
+	height: 100%;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
 }
 
 .app-layout > :nth-child(3) {
@@ -1291,6 +1745,10 @@ inno-app-shell {
 
 .app-layout--sidebar-collapsed {
 	--sidebar-w: 0px;
+}
+
+.app-layout--desktop.app-layout--sidebar-collapsed {
+	--sidebar-w: var(--sidebar-rail-w);
 }
 
 .app-layout--workspace-collapsed {
@@ -1319,6 +1777,10 @@ inno-app-shell {
 	--sidebar-w: 264px;
 }
 
+.app-layout--desktop.app-layout--workspace-full.app-layout--sidebar-expanded {
+	--sidebar-w: 298px;
+}
+
 .app-layout--workspace-full > .workspace-panel {
 	/* Pin the full view between the session sidebar and the window edge. Using
 	   both insets avoids the static-position edge case of an absolutely
@@ -1333,6 +1795,10 @@ inno-app-shell {
    letting the renderer header slide underneath them. */
 .app-layout--workspace-full.app-layout--sidebar-collapsed > .workspace-panel .inno-workspace-panel-header {
 	padding-left: var(--inno-window-chrome-title-inset);
+}
+
+.app-layout--desktop.app-layout--workspace-full.app-layout--sidebar-collapsed > .workspace-panel .inno-workspace-panel-header {
+	padding-left: calc(var(--inno-window-chrome-title-inset) - var(--sidebar-rail-w));
 }
 
 /* Give the workspace title a little more breathing room from the panel edge.
@@ -1353,8 +1819,8 @@ inno-app-shell {
 }
 
 /* Electron's macOS window uses a hidden title bar so the application surface
-   reaches the top edge. The renderer owns the same compact toolbar shape as
-   the reference app while the native traffic lights remain above it. */
+   reaches the top edge. The renderer owns the compact full-width chat row;
+   native traffic lights remain above it. */
 .app-layout > .inno-window-chrome {
 	position: absolute;
 	inset: 0;
@@ -1365,9 +1831,78 @@ inno-app-shell {
 	pointer-events: none;
 }
 
+.app-layout--desktop.app-layout--chat .inno-window-chrome-divider {
+	position: absolute;
+	top: 17px;
+	left: var(--sidebar-w);
+	z-index: 2;
+	width: 1px;
+	height: 18px;
+	background: var(--inno-border-strong);
+	pointer-events: none;
+	opacity: 0;
+	visibility: hidden;
+	transition: left 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 120ms ease, visibility 0s linear 120ms;
+}
+
+.app-layout--desktop.app-layout--chat.app-layout--sidebar-collapsed .inno-window-chrome .inno-window-chrome-divider {
+	left: calc(var(--inno-window-chrome-control-left) + var(--inno-window-chrome-control-size) * 3 + 4px);
+}
+
+.app-layout--desktop.app-layout--chat.app-layout--sidebar-collapsed .inno-window-chrome.has-new-chat-control .inno-window-chrome-divider {
+	left: calc(var(--inno-window-chrome-control-left) + var(--inno-window-chrome-control-size) * 4 + 4px);
+}
+
+.app-layout--desktop.app-layout--chat .inno-window-chrome-chat-header[data-active-conversation="true"] + .inno-window-chrome-divider {
+	opacity: 1;
+	visibility: visible;
+	transition-delay: 0s;
+}
+
+.app-layout--desktop.app-layout--chat .inno-window-chrome-chat-header {
+	position: absolute;
+	inset: 0 0 auto;
+	box-sizing: border-box;
+	height: var(--inno-window-chrome-height);
+	background: var(--inno-window-chrome-bg, var(--inno-desktop-base-bg));
+	pointer-events: none;
+	z-index: 0;
+	-webkit-app-region: drag;
+}
+.app-layout--desktop.app-layout--chat .inno-window-chrome-chat-header > .inno-conversation-header {
+	position: absolute;
+	inset: 0;
+	box-sizing: border-box;
+	width: 100%;
+	height: var(--inno-window-chrome-height);
+	min-height: var(--inno-window-chrome-height);
+	padding-left: calc(var(--inno-window-chrome-control-left) + var(--inno-window-chrome-control-size) * 3 + 16px);
+	padding-top: 10px;
+	padding-right: 56px;
+	border-bottom: 0;
+	background: transparent;
+	backdrop-filter: none;
+	pointer-events: auto;
+	-webkit-app-region: drag;
+}
+
+.app-layout--desktop.app-layout--chat .inno-window-chrome-chat-header .inno-workspace-switcher-trigger {
+	padding-block: 3px;
+}
+
+.app-layout--desktop.app-layout--chat.app-layout--sidebar-expanded .inno-window-chrome-chat-header > .inno-conversation-header {
+	padding-left: calc(var(--sidebar-w) + 16px);
+}
+
+.app-layout--desktop.app-layout--chat.app-layout--workspace-quarter .inno-window-chrome-chat-header > .inno-conversation-header,
+.app-layout--desktop.app-layout--chat.app-layout--workspace-half .inno-window-chrome-chat-header > .inno-conversation-header {
+	padding-right: calc(var(--workspace-w) + 20px);
+}
+
 .inno-window-chrome-bar {
 	position: absolute;
 	inset: 0 auto auto var(--inno-window-chrome-control-left);
+	z-index: 1;
 	display: flex;
 	width: var(--inno-window-chrome-control-size);
 	height: var(--inno-window-chrome-height);
@@ -1376,12 +1911,27 @@ inno-app-shell {
 	padding: var(--inno-window-chrome-control-top) 0 0;
 	background: transparent;
 	border-bottom: 0;
-	/* Keep the overlay limited to the renderer-owned control. A full-width
-	   app-region drag surface can swallow clicks on the workspace header in
-	   Electron; the underlying headers already provide their own drag regions. */
+	/* The wrapper passes pointer input through while the inner button remains
+	   interactive above the full-width title row. */
 	pointer-events: none;
 	-webkit-app-region: no-drag;
 	user-select: none;
+}
+
+.app-layout--desktop.app-layout--chat .inno-window-chrome-bar {
+	width: calc(var(--inno-window-chrome-control-size) * 3);
+}
+
+.app-layout--desktop.app-layout--chat .inno-window-chrome.has-new-chat-control .inno-window-chrome-bar {
+	width: calc(var(--inno-window-chrome-control-size) * 4);
+}
+
+.app-layout--desktop.app-layout--chat.app-layout--sidebar-collapsed .inno-window-chrome.has-new-chat-control .inno-window-chrome-chat-header > .inno-conversation-header {
+	padding-left: calc(var(--inno-window-chrome-control-left) + var(--inno-window-chrome-control-size) * 4 + 16px);
+}
+
+.app-layout--desktop:not(.app-layout--chat) .inno-window-chrome-bar {
+	width: calc(var(--inno-window-chrome-control-size) * 2);
 }
 
 .inno-window-chrome-button {
@@ -1409,9 +1959,15 @@ inno-app-shell {
 	display: block;
 }
 
-.inno-window-chrome-button:hover {
+.inno-window-chrome-button:hover:not(:disabled) {
 	background: var(--inno-surface-muted);
 	color: var(--inno-text);
+}
+
+.inno-window-chrome-button:disabled {
+	color: var(--inno-text-subtle);
+	opacity: 0.38;
+	cursor: default;
 }
 
 /* Browsers have no traffic lights beside the toggle, which only renders as
@@ -1445,6 +2001,10 @@ inno-app-shell {
 	/* It is the collapsed-state counterpart of the header actions. Keep the
 	   hit area, but let the icon sit directly on the header without a frame. */
 	transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease, transform 100ms ease;
+}
+
+.app-layout--desktop.app-layout--chat .inno-window-chrome-workspace-button {
+	top: var(--inno-window-chrome-control-top);
 }
 
 .inno-window-chrome-workspace-button:hover {
@@ -1488,24 +2048,37 @@ inno-app-shell {
 	color: var(--inno-accent);
 }
 
-/* Keep the sidebar brand row below the traffic lights. The conversation and
-   workbench headers intentionally occupy the same top row as the compact
-   window chrome, matching the reference layout's title hierarchy. Browsers
-   need no such offset — their only chrome control is the collapsed-state
-   expand button, which never overlaps the expanded header. */
+.inno-window-chrome-terminal-button.is-active {
+	background: var(--inno-accent-soft);
+	color: var(--inno-accent);
+}
+
+/* Outside desktop chat, keep the sidebar brand row below the native traffic
+   lights. Desktop chat resets this offset because its whole sidebar begins
+   under the shared app-level title row. Browsers need no such offset. */
 .app-layout--desktop .inno-sidebar-header {
 	padding-top: var(--inno-window-chrome-height);
 	-webkit-app-region: drag;
 }
 
+/* A floating preview starts below the window chrome, so its own header no
+   longer needs the traffic-light safe-area padding used by the pinned panel. */
+.app-layout--desktop .inno-desktop-sidebar-panel.is-preview .inno-sidebar-header {
+	padding-top: 12px;
+}
+
 /* The welcome view has no title header of its own. Keep its top strip as a
    real drag surface so the browser-like landing state is draggable too. */
 .app-layout--desktop .inno-chat-top-drag-region {
-	position: absolute;
-	inset: 0 0 auto;
+	position: relative;
+	flex: 0 0 var(--inno-window-chrome-height);
 	height: var(--inno-window-chrome-height);
 	z-index: 2;
 	-webkit-app-region: drag;
+}
+
+.app-layout--desktop.app-layout--chat .inno-chat-top-drag-region {
+	display: none;
 }
 
 .app-layout--desktop .inno-conversation-header,
@@ -1528,7 +2101,31 @@ inno-app-shell {
 	padding-left: var(--inno-window-chrome-title-inset);
 }
 
+.app-layout--desktop:not(.app-layout--chat) .inno-feature-header {
+	padding-left: calc(var(--inno-window-chrome-control-left) + var(--inno-window-chrome-control-size) * 2 + 10px - var(--sidebar-rail-w));
+}
+
+.app-layout--desktop.app-layout--sidebar-collapsed .inno-conversation-header--sidebar-collapsed {
+	padding-left: calc(var(--inno-window-chrome-title-inset) - var(--sidebar-rail-w));
+}
+
+.app-layout--desktop:not(.app-layout--chat) .inno-feature-header {
+	box-sizing: border-box;
+	height: var(--inno-window-chrome-height);
+	min-height: var(--inno-window-chrome-height);
+	padding-top: 10px;
+	padding-bottom: 0;
+	border-bottom: 0;
+	background: var(--inno-window-chrome-bg, var(--inno-desktop-base-bg));
+}
+
+.app-layout--desktop:not(.app-layout--chat) .inno-feature-header h1 {
+	font-size: 14.5px;
+	font-weight: 600;
+}
+
 .app-layout--desktop .inno-conversation-header {
+	height: var(--inno-window-chrome-height);
 	background: var(--inno-chat-bg);
 	backdrop-filter: none;
 }
@@ -1842,27 +2439,17 @@ inno-app-shell {
 	overflow: hidden;
 }
 
-/* The scroll region sits inside the strip so the pinned "+" button never
-   scrolls away; the active tab is scrolled into view programmatically. */
-.inno-btw-tab-strip [role="tablist"] {
+/* Keep the create control pinned while the tab strip scrolls horizontally. */
+.inno-btw-tab-scroll {
+	min-width: 0;
 	overflow-x: auto;
 	overflow-y: hidden;
 	scrollbar-width: thin;
 	overscroll-behavior-x: contain;
 }
 
-.inno-btw-tab {
-	background: transparent;
-	transition: background-color 120ms ease, color 120ms ease;
-}
-
-.inno-btw-tab:hover {
-	background: var(--inno-surface-muted);
-}
-
-.inno-btw-tab-active {
-	background: var(--inno-surface-muted);
-	color: var(--inno-text);
+.inno-btw-tabs {
+	min-width: max-content;
 }
 
 .inno-btw-thread-list {
@@ -2131,7 +2718,7 @@ inno-workspace-panel textarea {
 	border: 1px solid var(--inno-border);
 	background: var(--inno-surface);
 	color: var(--inno-text-muted);
-	transition: background-color var(--inno-dur-ui) var(--inno-ease-out), border-color var(--inno-dur-ui) var(--inno-ease-out), color var(--inno-dur-ui) var(--inno-ease-out), box-shadow var(--inno-dur-ui) var(--inno-ease-out), transform var(--inno-dur-fast) var(--inno-ease-out);
+	transition: background-color var(--inno-dur-ui) var(--inno-ease-out), border-color var(--inno-dur-ui) var(--inno-ease-out), color var(--inno-dur-ui) var(--inno-ease-out), box-shadow var(--inno-dur-ui) var(--inno-ease-out);
 }
 
 .inno-icon-button:hover:not(:disabled) {
@@ -2141,8 +2728,333 @@ inno-workspace-panel textarea {
 	box-shadow: var(--inno-shadow-soft);
 }
 
-.inno-icon-button:active:not(:disabled) {
-	transform: scale(0.97);
+.inno-ui-button {
+	display: inline-flex;
+	min-width: 0;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	font-weight: 500;
+	line-height: 1;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: background-color var(--inno-dur-ui) var(--inno-ease-out), border-color var(--inno-dur-ui) var(--inno-ease-out), color var(--inno-dur-ui) var(--inno-ease-out), box-shadow var(--inno-dur-ui) var(--inno-ease-out);
+}
+
+.inno-ui-button--xs {
+	min-height: 28px;
+	padding: 0 8px;
+	font-size: 12px;
+}
+
+.inno-ui-button--compact {
+	min-height: 20px;
+	padding: 0 6px;
+	font-size: 10px;
+}
+
+.inno-ui-button--sm {
+	min-height: 32px;
+	padding: 0 12px;
+	font-size: 13px;
+}
+
+.inno-ui-button--md {
+	min-height: 36px;
+	padding: 0 14px;
+	font-size: 14px;
+}
+
+.inno-ui-button--pill {
+	border-radius: 999px;
+}
+
+.inno-ui-button:disabled {
+	cursor: not-allowed;
+	opacity: 0.56;
+}
+
+:where(.inno-ui-input) {
+	width: 100%;
+	min-width: 0;
+	height: 32px;
+	padding: 0 10px;
+	border: 1px solid var(--inno-border);
+	border-radius: 6px;
+	background: var(--inno-surface);
+	color: var(--inno-text);
+	font-size: 14px;
+	font-weight: 400;
+	line-height: 1.25;
+	transition: background-color var(--inno-dur-ui) var(--inno-ease-out), border-color var(--inno-dur-ui) var(--inno-ease-out), color var(--inno-dur-ui) var(--inno-ease-out), box-shadow var(--inno-dur-ui) var(--inno-ease-out);
+}
+
+:where(.inno-ui-input--sm) {
+	height: 28px;
+	font-size: 12px;
+}
+
+.inno-ui-input::placeholder,
+.inno-ui-textarea::placeholder {
+	color: var(--inno-text-subtle);
+}
+
+.inno-ui-input:hover:not(:disabled),
+.inno-ui-textarea:hover:not(:disabled) {
+	border-color: var(--inno-border-strong);
+}
+
+.inno-ui-input:focus-visible,
+.inno-ui-textarea:focus-visible {
+	border-color: var(--inno-border-strong);
+	outline: none;
+	box-shadow: none;
+}
+
+.inno-ui-input:disabled,
+.inno-ui-textarea:disabled {
+	cursor: not-allowed;
+	opacity: 0.56;
+}
+
+.inno-ui-input--bare {
+	width: auto;
+	height: auto;
+	min-height: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
+.inno-ui-input--bare:hover:not(:disabled) {
+	border-color: transparent;
+}
+
+.inno-ui-input--bare:focus-visible {
+	border-color: transparent;
+	outline: none;
+	box-shadow: none;
+}
+
+.inno-ui-input--has-leading-adornment:not(.inno-ui-input--bare) {
+	padding-left: 28px;
+}
+
+.inno-ui-input--has-trailing-adornment:not(.inno-ui-input--bare) {
+	padding-right: 28px;
+}
+
+.inno-ui-input-leading-adornment {
+	position: absolute;
+	z-index: 1;
+	left: 8px;
+	top: 50%;
+	transform: translateY(-50%);
+	color: var(--inno-text-subtle);
+	pointer-events: none;
+}
+
+:where(.inno-ui-textarea) {
+	width: 100%;
+	min-width: 0;
+	padding: 6px 10px;
+	border: 1px solid var(--inno-border);
+	border-radius: 6px;
+	background: var(--inno-surface);
+	color: var(--inno-text);
+	font-size: 14px;
+	font-weight: 400;
+	line-height: 1.4;
+	transition: background-color var(--inno-dur-ui) var(--inno-ease-out), border-color var(--inno-dur-ui) var(--inno-ease-out), color var(--inno-dur-ui) var(--inno-ease-out), box-shadow var(--inno-dur-ui) var(--inno-ease-out);
+}
+
+:where(.inno-ui-checkbox) {
+	width: 14px;
+	height: 14px;
+	flex: 0 0 auto;
+	border: 1px solid var(--inno-border-strong);
+	border-radius: 3px;
+	background: var(--inno-surface);
+	accent-color: var(--inno-accent);
+	cursor: pointer;
+}
+
+.inno-ui-checkbox:focus-visible {
+	outline: none;
+	box-shadow: var(--inno-ring);
+}
+
+.inno-ui-checkbox:disabled {
+	cursor: not-allowed;
+	opacity: 0.56;
+}
+
+:where(.inno-ui-radio) {
+	width: 14px;
+	height: 14px;
+	flex: 0 0 auto;
+	accent-color: var(--inno-accent);
+	cursor: pointer;
+}
+
+.inno-ui-radio:focus-visible {
+	outline: none;
+	box-shadow: var(--inno-ring);
+}
+
+.inno-ui-radio:disabled {
+	cursor: not-allowed;
+	opacity: 0.56;
+}
+
+.inno-secondary-button {
+	border-color: var(--inno-border);
+	background: var(--inno-surface);
+	color: var(--inno-text-muted);
+}
+
+.inno-secondary-button:hover:not(:disabled) {
+	border-color: var(--inno-border-strong);
+	background: var(--inno-surface-muted);
+	color: var(--inno-text);
+}
+
+.inno-ghost-button {
+	background: transparent;
+	color: var(--inno-text-muted);
+}
+
+.inno-ghost-button:hover:not(:disabled) {
+	background: var(--inno-surface-muted);
+	color: var(--inno-text);
+}
+
+.inno-sidebar-nav-button {
+	width: 100%;
+	justify-content: flex-start;
+	border-radius: 10px;
+	padding: 8px 14px;
+	text-align: left;
+	font-size: 13.5px;
+	line-height: 1.35;
+	color: var(--inno-text);
+}
+
+.app-layout--desktop .inno-sidebar-nav-button {
+	padding-left: 6px;
+}
+
+.inno-sidebar-nav-button:hover:not(:disabled) {
+	background: var(--inno-surface-muted);
+	color: var(--inno-text);
+}
+
+.inno-sidebar-nav-button[aria-current="page"],
+.inno-sidebar-nav-button[aria-current="page"]:hover:not(:disabled) {
+	background: var(--inno-sidebar-active);
+	color: var(--inno-text);
+}
+
+.inno-sidebar-search-trigger {
+	width: 100%;
+	justify-content: flex-start;
+	border-radius: 6px;
+	padding: 0 12px 0 28px;
+	text-align: left;
+	font-size: 12px;
+}
+
+.inno-sidebar-user-trigger {
+	width: 100%;
+	justify-content: flex-start;
+	border-radius: 12px;
+	padding: 8px 10px;
+	text-align: left;
+	color: var(--inno-text);
+}
+
+.inno-sidebar-user-trigger.is-open,
+.inno-sidebar-user-trigger[aria-expanded="true"],
+.inno-sidebar-user-trigger:hover:not(:disabled) {
+	background: var(--inno-surface-muted);
+	color: var(--inno-text);
+}
+
+.inno-sidebar-workspace-move {
+	color: var(--inno-text-subtle);
+}
+
+.inno-sidebar-workspace-move:hover:not(:disabled) {
+	background: var(--inno-surface-muted);
+	color: var(--inno-text);
+}
+
+.inno-sidebar-workspace-move:disabled {
+	opacity: 0.25;
+}
+
+.inno-sidebar-session-actions {
+	transition: opacity var(--inno-dur-ui) var(--inno-ease-out);
+}
+
+.inno-sidebar-session-preview-fade {
+	text-overflow: clip;
+	-webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 44px), transparent 100%);
+	mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 44px), transparent 100%);
+}
+
+.inno-sidebar-session-actions-container {
+	transition: min-width var(--inno-dur-ui) var(--inno-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) and (min-width: 768px) {
+	.inno-sidebar-session-card:hover .inno-sidebar-session-actions-container {
+		min-width: 64px;
+	}
+}
+
+.inno-danger-button {
+	background: var(--inno-danger-bg);
+	color: var(--inno-danger);
+}
+
+.inno-danger-button:hover:not(:disabled) {
+	background: color-mix(in srgb, var(--inno-danger) 12%, var(--inno-surface));
+	color: var(--inno-danger);
+}
+
+.inno-ui-icon-button {
+	width: 28px;
+	flex: 0 0 auto;
+	padding: 0;
+}
+
+.inno-ui-button--compact.inno-ui-icon-button {
+	width: 20px;
+	min-height: 20px;
+}
+
+.inno-ui-button--sm.inno-ui-icon-button {
+	width: 32px;
+}
+
+.inno-ui-button--md.inno-ui-icon-button {
+	width: 36px;
+}
+
+.inno-ui-icon-button[aria-pressed="true"],
+.inno-ui-icon-button[aria-pressed="true"]:hover:not(:disabled) {
+	background: var(--inno-accent-soft);
+	color: var(--inno-accent);
+}
+
+.inno-ui-icon-button[aria-expanded="true"]:not([aria-pressed="true"]) {
+	background: var(--inno-surface-muted);
+	color: var(--inno-text);
 }
 
 .inno-primary-button {
@@ -2150,7 +3062,7 @@ inno-workspace-panel textarea {
 	background: var(--inno-primary-bg);
 	color: var(--inno-primary-fg);
 	box-shadow: var(--inno-shadow-soft);
-	transition: background-color var(--inno-dur-ui) var(--inno-ease-out), border-color var(--inno-dur-ui) var(--inno-ease-out), color var(--inno-dur-ui) var(--inno-ease-out), box-shadow var(--inno-dur-ui) var(--inno-ease-out), transform var(--inno-dur-fast) var(--inno-ease-out);
+	transition: background-color var(--inno-dur-ui) var(--inno-ease-out), border-color var(--inno-dur-ui) var(--inno-ease-out), color var(--inno-dur-ui) var(--inno-ease-out), box-shadow var(--inno-dur-ui) var(--inno-ease-out);
 }
 
 .inno-primary-button:hover:not(:disabled) {
@@ -2159,20 +3071,221 @@ inno-workspace-panel textarea {
 	box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
 }
 
-.inno-primary-button:active:not(:disabled) {
-	transform: scale(0.97);
-}
-
 .inno-primary-button:disabled {
 	cursor: not-allowed;
 }
 
-.inno-chat-grid {
-	background:
-		linear-gradient(90deg, var(--inno-grid-color, rgba(226, 232, 240, 0.38)) 1px, transparent 1px),
-		linear-gradient(var(--inno-grid-color, rgba(226, 232, 240, 0.38)) 1px, transparent 1px),
-		var(--inno-chat-bg);
-	background-size: 36px 36px, 36px 36px, auto;
+.inno-ui-button:focus-visible {
+	outline: none;
+	box-shadow: var(--inno-ring);
+}
+
+.inno-ui-tabs {
+	display: flex;
+	min-width: 0;
+	align-items: stretch;
+}
+
+.inno-ui-tabs--spacing-compact {
+	gap: 4px;
+}
+
+.inno-ui-tabs--spacing-comfortable {
+	gap: 16px;
+}
+
+.inno-ui-tabs__trigger {
+	display: inline-flex;
+	min-width: 0;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	border: 0;
+	border-bottom: 2px solid transparent;
+	border-radius: 6px 6px 0 0;
+	background: transparent;
+	color: var(--inno-text-muted);
+	font-weight: 500;
+	line-height: 1;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: background-color var(--inno-dur-ui) var(--inno-ease-out), border-color var(--inno-dur-ui) var(--inno-ease-out), color var(--inno-dur-ui) var(--inno-ease-out);
+}
+
+.inno-ui-tabs--size-sm .inno-ui-tabs__trigger {
+	min-height: 36px;
+	padding: 0 10px;
+	font-size: 14px;
+}
+
+.inno-ui-tabs--size-compact .inno-ui-tabs__trigger {
+	min-height: 28px;
+	padding: 0 8px;
+	font-size: 13px;
+}
+
+.inno-ui-tabs__trigger:hover:not(:disabled) {
+	color: var(--inno-text);
+}
+
+.inno-ui-tabs__trigger[aria-selected="true"] {
+	border-bottom-color: var(--inno-accent);
+	color: var(--inno-accent);
+}
+
+.inno-ui-tabs--pill .inno-ui-tabs__trigger {
+	max-width: 100%;
+	justify-content: flex-start;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--inno-text-muted);
+	font-weight: 400;
+}
+
+.inno-ui-tabs--pill .inno-ui-tabs__trigger:hover:not(:disabled) {
+	background: var(--inno-surface-muted);
+	color: var(--inno-text);
+}
+
+.inno-ui-tabs--pill .inno-ui-tabs__trigger[aria-selected="true"],
+.inno-ui-tabs--pill .inno-ui-tabs__trigger[aria-selected="true"]:hover:not(:disabled) {
+	border-color: transparent;
+	background: var(--inno-surface-muted);
+	color: var(--inno-text);
+}
+
+.inno-ui-tabs__label {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.inno-ui-tabs__trigger--closable {
+	gap: 2px;
+	padding-right: 3px;
+}
+
+.inno-ui-tabs__trigger--closable .inno-ui-tabs__label {
+	max-width: 144px;
+}
+
+.inno-ui-tabs__close {
+	display: inline-flex;
+	width: 20px;
+	height: 20px;
+	flex: 0 0 20px;
+	align-items: center;
+	justify-content: center;
+	border-radius: 4px;
+	color: var(--inno-text-subtle);
+	cursor: pointer;
+	transition: background-color var(--inno-dur-ui) var(--inno-ease-out), color var(--inno-dur-ui) var(--inno-ease-out);
+}
+
+.inno-ui-tabs__close:hover {
+	background: var(--inno-surface);
+	color: var(--inno-text);
+}
+
+.inno-ui-tabs__trigger:focus-visible,
+.inno-ui-segmented-control__option:focus-visible,
+.inno-ui-tab-panel:focus-visible {
+	outline: 2px solid var(--inno-border-strong);
+	outline-offset: 2px;
+	box-shadow: none;
+}
+
+.inno-ui-tabs__trigger:disabled,
+.inno-ui-segmented-control__option:disabled {
+	cursor: not-allowed;
+	opacity: 0.56;
+}
+
+.inno-ui-segmented-control {
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: 2px;
+	padding: 2px;
+	border: 1px solid var(--inno-border);
+	border-radius: 8px;
+	background: var(--inno-surface-muted);
+}
+
+.inno-ui-segmented-control__option {
+	display: inline-flex;
+	min-height: 26px;
+	min-width: 0;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 0 8px;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--inno-text-subtle);
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: background-color var(--inno-dur-ui) var(--inno-ease-out), border-color var(--inno-dur-ui) var(--inno-ease-out), color var(--inno-dur-ui) var(--inno-ease-out), box-shadow var(--inno-dur-ui) var(--inno-ease-out);
+}
+
+.inno-ui-segmented-control__option:hover:not(:disabled) {
+	color: var(--inno-text);
+}
+
+.inno-ui-segmented-control__option[aria-checked="true"] {
+	border-color: var(--inno-border);
+	background: var(--inno-surface);
+	color: var(--inno-text);
+	box-shadow: var(--inno-shadow-soft);
+}
+
+.inno-ui-segmented-control__option[aria-checked="true"]:hover:not(:disabled) {
+	background: var(--inno-surface);
+	color: var(--inno-text);
+}
+
+.inno-ui-segmented-control--toolbar {
+	gap: 0;
+	padding: 0.125rem;
+	border: 0;
+	border-radius: 0.5rem;
+	background: color-mix(in srgb, var(--inno-content-border) 28%, transparent);
+}
+
+.inno-ui-segmented-control--toolbar .inno-ui-segmented-control__option {
+	width: auto;
+	min-width: var(--inno-content-control-size);
+	height: var(--inno-content-control-size);
+	min-height: var(--inno-content-control-size);
+	flex: 0 0 auto;
+	gap: 0.35rem;
+	padding: 0 0.5rem;
+	border: 0;
+	border-radius: 0.4rem;
+	font-size: 0.6875rem;
+	font-weight: 550;
+	color: var(--inno-text-muted);
+}
+
+.inno-ui-segmented-control--toolbar .inno-ui-segmented-control__option:hover:not(:disabled) {
+	background: var(--inno-content-control-hover);
+	color: var(--inno-text);
+}
+
+.inno-ui-segmented-control--toolbar .inno-ui-segmented-control__option[aria-checked="true"],
+.inno-ui-segmented-control--toolbar .inno-ui-segmented-control__option[aria-checked="true"]:hover:not(:disabled) {
+	background: var(--inno-surface);
+	color: var(--inno-text);
+	box-shadow: 0 1px 3px color-mix(in srgb, var(--inno-text) 14%, transparent);
 }
 
 .inno-message {
@@ -2742,6 +3855,57 @@ inno-workspace-panel textarea {
 	box-shadow: var(--inno-ring);
 }
 
+.inno-chat-welcome-layout {
+	display: grid;
+	min-height: max(100%, 480px);
+	grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
+	padding-block: 32px;
+}
+
+.inno-chat-welcome-stage {
+	position: relative;
+	grid-row: 2;
+	width: min(100%, 620px);
+	margin-inline: auto;
+}
+
+.inno-chat-welcome-stage > .inno-composer {
+	position: relative;
+}
+
+.inno-chat-welcome-stage > .inno-composer > .inno-composer-subrow {
+	position: absolute;
+	inset-inline: 0;
+	top: calc(100% + 10px);
+}
+
+.inno-chat-welcome-heading {
+	position: absolute;
+	inset-inline: 0;
+	bottom: calc(100% + 18px);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+}
+
+/* The Electron welcome state uses a text-only greeting with more air above
+   the composer. Browser users keep the existing brand mark and spacing. */
+.app-layout--desktop.app-layout--chat .inno-chat-welcome-brand {
+	display: none;
+}
+
+.app-layout--desktop.app-layout--chat .inno-chat-welcome-heading {
+	bottom: calc(100% + 30px);
+}
+
+.inno-chat-welcome-error {
+	position: absolute;
+	inset-inline: 0;
+	top: calc(100% + 50px);
+	text-align: center;
+}
+
 /* The composer root is an unstyled stack: the rounded card plus the sub-pill
    row beneath it. ChatCenter measures this root for the conversation bottom
    space, so the pills count toward the covered area. */
@@ -2762,8 +3926,8 @@ inno-workspace-panel textarea {
 }
 
 .inno-composer-card:focus-within {
-	border-color: var(--inno-focus-border);
-	box-shadow: var(--inno-shadow-composer), var(--inno-ring);
+	border-color: var(--inno-border-strong);
+	box-shadow: var(--inno-shadow-composer);
 }
 
 /* Sub-pill row below the card (InnoSpark composer-sub): workspace, permission,
@@ -2775,35 +3939,52 @@ inno-workspace-panel textarea {
 	padding: 0 4px;
 }
 
-.inno-composer-subpill {
+.inno-composer-subrow .inno-composer-subrow-control {
 	display: inline-flex;
+	height: 32px;
 	align-items: center;
+	justify-content: center;
 	gap: 6px;
 	border: 1px solid var(--inno-border);
 	border-radius: 15px;
 	background: var(--inno-surface);
 	padding: 5px 13px;
 	font-size: 12.5px;
+	font-weight: var(--inno-font-weight-regular);
+	line-height: 1.25;
+	text-align: left;
 	color: var(--inno-text-muted);
 	box-shadow: 0 1px 2px color-mix(in srgb, var(--inno-text) 8%, transparent);
 	cursor: pointer;
 	transition: background-color var(--inno-dur-ui) var(--inno-ease-out), border-color var(--inno-dur-ui) var(--inno-ease-out), color var(--inno-dur-ui) var(--inno-ease-out);
 }
 
-.inno-composer-subpill:hover:not(:disabled) {
+.inno-composer-subrow .inno-composer-subrow-control:hover:not(:disabled),
+.inno-composer-subrow .inno-composer-subrow-control[aria-expanded="true"] {
 	background: var(--inno-surface-muted);
 	border-color: var(--inno-border-strong);
 	color: var(--inno-text);
 }
 
+.inno-composer-subrow .inno-composer-subrow-control:disabled {
+	cursor: not-allowed;
+	opacity: 0.56;
+}
+
+.inno-composer-subrow .inno-workspace-switcher-trigger:disabled {
+	cursor: wait;
+	opacity: 0.62;
+}
+
 /* Yolo (完全权限) reads as a red "full access" pill in both themes. */
-.inno-composer-subpill.is-perm-full {
+.inno-composer-subrow .inno-composer-subrow-control.is-perm-full {
 	background: var(--inno-surface);
 	border-color: var(--inno-border);
 	color: var(--inno-danger);
 }
 
-.inno-composer-subpill.is-perm-full:hover:not(:disabled) {
+.inno-composer-subrow .inno-composer-subrow-control.is-perm-full:hover:not(:disabled),
+.inno-composer-subrow .inno-composer-subrow-control.is-perm-full[aria-expanded="true"] {
 	border-color: var(--inno-border-strong);
 	background: var(--inno-surface-muted);
 	color: var(--inno-danger);
@@ -2842,25 +4023,6 @@ inno-workspace-panel textarea {
 .inno-composer-permission-inline.is-perm-full[aria-expanded="true"] {
 	background: var(--inno-danger-bg);
 	color: var(--inno-danger);
-}
-
-/* The model trigger joins the subrow as one more pill. */
-.inno-composer-subrow .inno-composer-model-trigger {
-	height: auto;
-	border: 1px solid var(--inno-border);
-	border-radius: 15px;
-	background: var(--inno-surface);
-	padding: 5px 13px;
-	font-size: 12.5px;
-	color: var(--inno-text-muted);
-	box-shadow: 0 1px 2px color-mix(in srgb, var(--inno-text) 8%, transparent);
-}
-
-.inno-composer-subrow .inno-composer-model-trigger:hover:not(:disabled),
-.inno-composer-subrow .inno-composer-model-trigger[aria-expanded="true"] {
-	background: var(--inno-surface-muted);
-	border-color: var(--inno-border-strong);
-	color: var(--inno-text);
 }
 
 .inno-composer-textarea {
@@ -3005,22 +4167,6 @@ inno-workspace-panel textarea {
 	transform: translate(-50%, 6px) scale(0.96) !important;
 }
 
-/* On the welcome screen, keep the composer centered while its textarea grows:
-   the upper block moves with the top edge, while the lower content remains in
-   normal flow and is pushed down by the expanded composer. */
-.inno-welcome-layout {
-	--inno-welcome-composer-half-growth: 0px;
-}
-
-.inno-welcome-upper {
-	transform: translateY(calc(-1 * var(--inno-welcome-composer-half-growth)));
-}
-
-.inno-welcome-composer-shell {
-	margin-top: calc(1.125rem - var(--inno-welcome-composer-half-growth));
-	/* Keep following welcome content in normal flow so it is pushed down by
-	   the expanded composer instead of being covered by it. */
-}
 
 .inno-mode-segmented-control {
 	display: inline-flex;
@@ -3090,25 +4236,18 @@ inno-workspace-panel textarea {
 }
 
 .inno-composer-model-menu {
-	position: absolute;
-	right: 0;
-	bottom: calc(100% + 8px);
 	width: min(220px, calc(100vw - 24px));
-	max-height: min(360px, calc(100vh - 24px));
-	overflow-y: auto;
 	padding: 6px;
-	border: 1px solid var(--inno-border);
-	border-radius: 8px;
-	background: var(--inno-surface-raised);
-	box-shadow: 0 12px 28px rgba(31, 35, 40, 0.16);
-	transform-origin: bottom right;
-	animation: inno-composer-model-menu-in var(--inno-dur-fast) var(--inno-ease-out) both;
+	max-height: min(360px, calc(100dvh - 24px));
+	overflow-y: auto;
 }
 
-/* Slash palette reuses the model menu treatment; only its anchoring differs. */
+/* Slash palette keeps its contextual anchor and rows while sharing the popover surface. */
 .inno-slash-palette {
+	position: absolute;
 	left: 0;
 	right: 0;
+	bottom: calc(100% + 8px);
 	z-index: 20;
 	width: auto;
 	max-height: var(--inno-slash-palette-max-height, min(360px, calc(100vh - 24px)));
@@ -3124,60 +4263,15 @@ inno-workspace-panel textarea {
 	overflow-y: auto;
 }
 
-@keyframes inno-composer-model-menu-in {
-	from {
-		opacity: 0;
-		transform: translateY(5px) scale(0.98);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0) scale(1);
-	}
+.inno-composer-model-option {
+	min-height: 36px;
 }
 
-.inno-composer-model-menu-footer {
-	margin-top: 5px;
-	padding-top: 5px;
-	border-top: 1px solid var(--inno-border);
-}
-
-.inno-composer-model-option,
-.inno-composer-model-manage {
-	display: flex;
-	width: 100%;
-	align-items: center;
-	justify-content: space-between;
-	gap: 8px;
+.inno-slash-command-option {
+	min-height: 32px;
 	padding: 7px 8px;
-	border: 0;
-	border-radius: 4px;
-	background: transparent;
-	color: var(--inno-text);
+	border-radius: 6px;
 	font-size: 12px;
-	text-align: left;
-	transition: background-color var(--inno-dur-ui) var(--inno-ease-out), color var(--inno-dur-ui) var(--inno-ease-out);
-}
-
-.inno-composer-model-option:hover:not(:disabled),
-.inno-composer-model-option.is-selected,
-.inno-composer-model-manage:hover {
-	background: var(--inno-accent-soft);
-	color: var(--inno-accent);
-}
-
-.inno-composer-model-option + .inno-composer-model-option {
-	margin-top: 2px;
-}
-
-.inno-composer-model-option:disabled {
-	cursor: wait;
-	opacity: 0.65;
-}
-
-.inno-composer-model-manage {
-	justify-content: flex-start;
-	color: var(--inno-text-muted);
-	cursor: pointer;
 }
 
 
@@ -3395,12 +4489,665 @@ inno-workspace-panel textarea {
 	min-width: 0;
 }
 
-/* Shared shell for anchored menus and portal-rendered smart-input panels. */
+/* Shared shell and interaction row for popovers and compact menu choices. */
 .inno-popover-surface {
-	border: 1px solid color-mix(in srgb, var(--inno-border-strong) 58%, transparent);
-	border-radius: 14px;
+	border: 1px solid var(--inno-border);
+	border-radius: 12px;
 	background: var(--inno-surface-raised);
-	box-shadow: 0 16px 40px rgba(31, 35, 40, 0.16), 0 2px 7px rgba(31, 35, 40, 0.08);
+	box-shadow: var(--inno-shadow-soft);
+	color: var(--inno-text);
+	animation: inno-popover-enter var(--inno-dur-ui) var(--inno-ease-out);
+}
+
+.inno-popover-surface[data-state="closed"] {
+	animation: inno-popover-exit var(--inno-dur-ui) var(--inno-ease-out) both;
+}
+
+.inno-tooltip-content {
+	position: relative;
+	z-index: 110;
+	display: flex;
+	max-width: min(320px, calc(100vw - 16px));
+	align-items: center;
+	gap: 12px;
+	padding: 8px 10px;
+	border: 1px solid var(--inno-border);
+	border-radius: 8px;
+	background: var(--inno-surface-raised);
+	box-shadow: var(--inno-shadow-soft);
+	color: var(--inno-text);
+	font-size: 12px;
+	line-height: 1.45;
+	animation: inno-tooltip-enter var(--inno-dur-fast) var(--inno-ease-out);
+}
+
+.inno-tooltip-content[data-state="closed"] {
+	animation: inno-tooltip-exit var(--inno-dur-fast) var(--inno-ease-out) both;
+}
+
+.inno-tooltip-content__copy {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.inno-tooltip-content__label {
+	font-weight: 500;
+}
+
+.inno-tooltip-content__description {
+	margin-top: 2px;
+	color: var(--inno-text-muted);
+}
+
+.inno-tooltip-content__shortcut {
+	flex: 0 0 auto;
+	padding: 1px 5px;
+	border: 1px solid var(--inno-border);
+	border-radius: 4px;
+	background: var(--inno-surface-muted);
+	color: var(--inno-text-muted);
+	font: inherit;
+	font-size: 10px;
+	white-space: nowrap;
+}
+
+.inno-menu-option {
+	display: flex;
+	width: 100%;
+	min-width: 0;
+	align-items: center;
+	gap: 8px;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--inno-text);
+	text-align: left;
+	cursor: pointer;
+	transition: background-color var(--inno-dur-ui) var(--inno-ease-out), color var(--inno-dur-ui) var(--inno-ease-out);
+}
+
+.inno-menu-option:hover:not(:disabled):not([data-disabled]):not([aria-disabled="true"]) {
+	background: var(--inno-surface-muted);
+}
+
+.inno-menu-option[data-highlighted]:not([data-disabled]) {
+	background: var(--inno-surface-muted);
+}
+
+/* Radix focuses a menu item when a menu opens. Use the highlighted row surface
+   as its focus cue instead of the browser's platform-specific outline. */
+.inno-ui-menu-item:focus {
+	outline: none;
+	box-shadow: none;
+}
+
+.inno-menu-option.is-selected,
+.inno-menu-option[aria-checked="true"],
+.inno-menu-option[data-state="checked"],
+.inno-menu-option[data-selected="true"] {
+	background: var(--inno-accent-soft);
+	color: var(--inno-accent);
+}
+
+.inno-ui-menu-radio-item[aria-checked="true"],
+.inno-ui-menu-radio-item[data-state="checked"] {
+	background: transparent;
+	color: var(--inno-text);
+}
+
+.inno-ui-menu-radio-item[data-state="checked"] .inno-ui-menu-item-indicator {
+	color: var(--inno-text-muted);
+}
+
+.inno-ui-menu-radio-item[data-state="checked"] .inno-ui-menu-choice-icon {
+	color: var(--inno-text-subtle);
+}
+
+.inno-ui-menu-radio-item[data-highlighted]:not([data-disabled]) {
+	background: var(--inno-surface-muted);
+	color: var(--inno-text);
+}
+
+.inno-menu-option:disabled,
+.inno-menu-option[data-disabled],
+.inno-menu-option[aria-disabled="true"] {
+	cursor: not-allowed;
+	opacity: 0.56;
+}
+
+.inno-ui-menu-content.inno-permission-menu {
+	width: 256px;
+	padding: 6px;
+}
+
+.inno-permission-menu-note {
+	margin: 5px 2px 1px;
+	color: var(--inno-text-subtle);
+	font-size: 10px;
+	line-height: 1.45;
+}
+
+.inno-ui-menu-content {
+	z-index: 100;
+	min-width: 160px;
+	max-height: min(var(--radix-dropdown-menu-content-available-height, 420px), calc(100dvh - 16px));
+	overflow-y: auto;
+	padding: 4px;
+	outline: none;
+	transform-origin: var(--radix-dropdown-menu-content-transform-origin, center);
+}
+
+.inno-ui-menu-item {
+	position: relative;
+	min-height: 32px;
+	padding: 6px 8px;
+	font-size: 12px;
+	line-height: 18px;
+	user-select: none;
+}
+
+.inno-ui-menu-item.is-danger,
+.inno-ui-menu-item[data-tone="danger"] {
+	color: var(--inno-danger);
+}
+
+.inno-ui-menu-item.is-danger:hover:not(:disabled):not([data-disabled]),
+.inno-ui-menu-item.is-danger[data-highlighted]:not([data-disabled]),
+.inno-ui-menu-item[data-tone="danger"][data-highlighted]:not([data-disabled]) {
+	background: var(--inno-danger-bg);
+	color: var(--inno-danger);
+}
+
+.inno-ui-menu-item--checkable {
+	padding-left: 30px;
+}
+
+.inno-ui-menu-option-row {
+	min-height: 36px;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 8px;
+}
+
+.inno-ui-menu-option-row .inno-ui-menu-choice-icon {
+	height: 16px;
+	margin-top: 0;
+}
+
+.inno-ui-menu-option-row-label {
+	min-width: 0;
+	flex: 1 1 auto;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.inno-ui-menu-option-row .inno-ui-menu-item-indicator {
+	position: static;
+	margin-left: auto;
+	flex: 0 0 auto;
+}
+
+.inno-ui-menu-subtrigger {
+	justify-content: flex-start;
+}
+
+.inno-ui-menu-subtrigger-icon {
+	margin-left: auto;
+	color: var(--inno-text-subtle);
+}
+
+.inno-ui-menu-item-indicator {
+	position: absolute;
+	left: 8px;
+	display: inline-flex;
+	width: 14px;
+	height: 14px;
+	align-items: center;
+	justify-content: center;
+	color: var(--inno-accent);
+}
+
+.inno-ui-menu-choice {
+	min-height: 48px;
+	align-items: flex-start;
+	gap: 8px;
+	padding: 7px 8px;
+}
+
+.inno-ui-menu-choice-icon {
+	display: inline-flex;
+	width: 16px;
+	height: 18px;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	margin-top: 1px;
+	color: var(--inno-text-subtle);
+}
+
+.inno-ui-menu-choice-copy {
+	display: flex;
+	min-width: 0;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.inno-ui-menu-choice-label {
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 16px;
+}
+
+.inno-ui-menu-choice-description {
+	color: var(--inno-text-subtle);
+	font-size: 11px;
+	line-height: 1.45;
+}
+
+.inno-ui-menu-choice .inno-ui-menu-item-indicator {
+	position: static;
+	margin-top: 2px;
+	margin-left: auto;
+	flex: 0 0 auto;
+}
+
+.inno-ui-menu-item-icon {
+	display: inline-flex;
+	width: 16px;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	color: var(--inno-text-subtle);
+}
+
+.inno-ui-menu-item-label {
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.inno-ui-menu-shortcut {
+	margin-left: auto;
+	color: var(--inno-text-subtle);
+	font-size: 11px;
+}
+
+.inno-ui-menu-label,
+.inno-ui-select-label {
+	display: block;
+	padding: 5px 8px;
+	color: var(--inno-text-subtle);
+	font-size: 11px;
+	font-weight: 500;
+}
+
+.inno-ui-menu-separator {
+	height: 1px;
+	margin: 4px 2px;
+	border: 0;
+	background: var(--inno-border);
+}
+
+.inno-ui-searchable-select {
+	display: flex;
+	width: min(320px, calc(100vw - 16px));
+	min-width: min(280px, calc(100vw - 16px));
+	max-height: min(var(--radix-popover-content-available-height, 420px), calc(100dvh - 16px));
+	min-height: 0;
+	flex-direction: column;
+	gap: 6px;
+	overflow: hidden;
+	padding: 7px;
+	transform-origin: var(--radix-popover-content-transform-origin, center);
+}
+
+.inno-ui-searchable-select-search {
+	display: flex;
+	flex: 0 0 auto;
+	height: 32px;
+	align-items: center;
+	gap: 7px;
+	padding: 0 8px;
+	border: 1px solid transparent;
+	border-radius: 9px;
+	background: var(--inno-surface-muted);
+	color: var(--inno-text-subtle);
+}
+
+.inno-ui-searchable-select-search:focus-within {
+	border-color: var(--inno-border-strong);
+	box-shadow: none;
+}
+
+.inno-ui-searchable-select-search input {
+	width: 100%;
+	min-width: 0;
+	flex: 1 1 auto;
+	border: 0;
+	outline: 0;
+	background: transparent;
+	color: var(--inno-text);
+	font-size: 12px;
+}
+
+.inno-ui-searchable-select-search input:focus,
+.inno-ui-searchable-select-search input:focus-visible {
+	outline: none;
+	box-shadow: none;
+}
+
+.inno-ui-searchable-select-search input::placeholder {
+	color: var(--inno-text-subtle);
+}
+
+.inno-ui-searchable-select-clear {
+	display: inline-flex;
+	width: 20px;
+	height: 20px;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--inno-text-subtle);
+	cursor: pointer;
+}
+
+.inno-ui-searchable-select-clear:hover {
+	background: var(--inno-surface);
+	color: var(--inno-text);
+}
+
+.inno-ui-searchable-select-list {
+	display: flex;
+	min-height: 0;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: 2px;
+	overflow-x: hidden;
+	overflow-y: auto;
+	scrollbar-gutter: stable;
+}
+
+.inno-ui-searchable-select-list > div {
+	width: 100%;
+	min-width: 0;
+}
+
+.inno-ui-searchable-select-option {
+	min-height: 36px;
+	flex: 0 0 auto;
+	padding: 6px 8px;
+	font-size: 12px;
+	line-height: 16px;
+	text-align: left;
+	outline: none;
+}
+
+.inno-ui-searchable-select-option:hover:not([aria-disabled="true"]),
+.inno-ui-searchable-select-option[data-active="true"]:not([aria-disabled="true"]):not([data-selected="true"]) {
+	background: var(--inno-surface-muted);
+}
+
+.inno-ui-searchable-select-action:hover:not(:disabled):not([data-selected="true"]) {
+	background: var(--inno-surface-muted);
+}
+
+.inno-ui-searchable-select-option[data-selected="true"],
+.inno-ui-searchable-select-action[data-selected="true"] {
+	background: var(--inno-accent-soft);
+	color: var(--inno-accent);
+}
+
+.inno-ui-searchable-select-icon {
+	display: inline-flex;
+	width: 16px;
+	height: 18px;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	color: var(--inno-text-subtle);
+}
+
+.inno-ui-searchable-select-copy {
+	display: flex;
+	min-width: 0;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: 1px;
+}
+
+.inno-ui-searchable-select-label {
+	min-width: 0;
+	overflow: hidden;
+	font-weight: 500;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.inno-ui-searchable-select-description {
+	min-width: 0;
+	overflow: hidden;
+	color: var(--inno-text-subtle);
+	font-size: 10px;
+	line-height: 13px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.inno-ui-searchable-select-check {
+	flex: 0 0 auto;
+	color: var(--inno-accent);
+}
+
+.inno-ui-searchable-select-group-label {
+	padding: 5px 8px 3px;
+	color: var(--inno-text-subtle);
+	font-size: 11px;
+	font-weight: 500;
+}
+
+.inno-ui-searchable-select-separator {
+	margin: 4px 2px;
+}
+
+.inno-ui-searchable-select-empty {
+	padding: 18px 8px;
+	color: var(--inno-text-subtle);
+	font-size: 12px;
+	text-align: center;
+}
+
+.inno-ui-searchable-select-actions {
+	display: flex;
+	flex: 0 0 auto;
+	flex-direction: column;
+	gap: 2px;
+	padding-top: 0;
+}
+
+.inno-ui-searchable-select-actions-separator {
+	margin-bottom: 3px;
+}
+
+.inno-ui-searchable-select-action {
+	min-height: 36px;
+	flex: 0 0 auto;
+	padding: 6px 8px;
+	font-size: 12px;
+	line-height: 18px;
+}
+
+.inno-ui-searchable-select-action .inno-ui-searchable-select-label {
+	flex: 1 1 auto;
+}
+
+.inno-ui-select-trigger {
+	display: inline-flex;
+	min-width: 0;
+	min-height: 32px;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 5px 9px;
+	border: 1px solid var(--inno-border);
+	border-radius: 8px;
+	background: var(--inno-surface);
+	color: var(--inno-text);
+	text-align: left;
+	transition: background-color var(--inno-dur-ui) var(--inno-ease-out), border-color var(--inno-dur-ui) var(--inno-ease-out);
+}
+
+.inno-ui-select-trigger:hover:not(:disabled),
+.inno-ui-select-trigger[data-state="open"] {
+	border-color: var(--inno-border-strong);
+	background: var(--inno-surface-muted);
+}
+
+.inno-ui-select-trigger-icon {
+	display: inline-flex;
+	flex: 0 0 auto;
+	color: var(--inno-text-subtle);
+}
+
+.inno-ui-select-content {
+	z-index: 100;
+	min-width: var(--radix-select-trigger-width);
+	max-height: min(var(--radix-select-content-available-height, 420px), calc(100dvh - 16px));
+	overflow: hidden;
+	padding: 4px;
+	outline: none;
+	transform-origin: var(--radix-select-content-transform-origin, center);
+}
+
+.inno-ui-select-viewport {
+	max-height: min(320px, calc(100dvh - 24px));
+	overflow-y: auto;
+}
+
+.inno-ui-select-item {
+	position: relative;
+	display: flex;
+	min-height: 32px;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 30px 6px 8px;
+	border-radius: 6px;
+	color: var(--inno-text);
+	font-size: 12px;
+	line-height: 18px;
+	outline: none;
+	user-select: none;
+}
+
+.inno-ui-select-item[data-state="checked"] {
+	background: transparent;
+	color: var(--inno-text);
+}
+
+.inno-ui-select-item[data-state="checked"] .inno-ui-select-indicator {
+	color: var(--inno-text-muted);
+}
+
+.inno-ui-select-item[data-highlighted]:not([data-disabled]) {
+	background: var(--inno-surface-muted);
+	color: var(--inno-text);
+}
+
+.inno-ui-select-item[data-disabled] {
+	cursor: not-allowed;
+	opacity: 0.56;
+}
+
+.inno-ui-select-option-icon {
+	display: inline-flex;
+	flex: 0 0 auto;
+	color: var(--inno-text-subtle);
+}
+
+.inno-ui-select-indicator {
+	position: absolute;
+	right: 8px;
+	display: inline-flex;
+	width: 14px;
+	align-items: center;
+	justify-content: center;
+	color: var(--inno-text-muted);
+}
+
+.inno-ui-select-scroll-button {
+	display: flex;
+	height: 18px;
+	align-items: center;
+	justify-content: center;
+	color: var(--inno-text-subtle);
+}
+
+.inno-ui-popover-content {
+	z-index: 100;
+	max-width: min(480px, calc(100vw - 16px));
+	transform-origin: var(--radix-popover-content-transform-origin, center);
+}
+
+.inno-ui-separator {
+	flex: 0 0 auto;
+	background: var(--inno-border);
+}
+
+.inno-ui-separator[data-orientation="horizontal"] {
+	width: 100%;
+	height: 1px;
+}
+
+.inno-ui-separator[data-orientation="vertical"] {
+	width: 1px;
+	min-height: 1em;
+	align-self: stretch;
+}
+
+@keyframes inno-popover-enter {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes inno-popover-exit {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+
+@keyframes inno-tooltip-enter {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes inno-tooltip-exit {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.inno-tooltip-content {
+		animation-duration: 0.001ms;
+	}
 }
 
 .inno-workspace-switcher-trigger {
@@ -3431,6 +5178,20 @@ inno-workspace-panel textarea {
 .inno-workspace-switcher-trigger:disabled {
 	cursor: wait;
 	opacity: 0.62;
+}
+
+.inno-conversation-header .inno-workspace-switcher-trigger {
+	border-color: transparent;
+	border-radius: 8px;
+	background: transparent;
+	box-shadow: none;
+}
+
+.inno-conversation-header .inno-workspace-switcher-trigger:hover:not(:disabled),
+.inno-conversation-header .inno-workspace-switcher-trigger[aria-expanded="true"] {
+	border-color: transparent;
+	background: var(--inno-surface-muted);
+	color: var(--inno-text);
 }
 
 .inno-workspace-switcher-folder {
@@ -3465,53 +5226,46 @@ inno-workspace-panel textarea {
 }
 
 .inno-workspace-switcher-menu {
-	position: absolute;
-	bottom: calc(100% + 8px);
-	left: 0;
-	z-index: 50;
-	display: flex;
-	width: min(300px, calc(100vw - 16px));
-	min-width: min(280px, calc(100vw - 16px));
-	max-height: min(390px, calc(100dvh - 16px));
-	min-height: 0;
-	flex-direction: column;
-	gap: 6px;
-	overflow: hidden;
-	padding: 7px;
-	transform-origin: bottom left;
-	animation: inno-workspace-menu-in var(--inno-dur-fast) var(--inno-ease-out) both;
+	width: min(288px, calc(100vw - 16px));
+	min-width: min(260px, calc(100vw - 16px));
 }
 
-@keyframes inno-workspace-menu-in {
-	from {
-		opacity: 0;
-		transform: translateY(5px) scale(0.98);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0) scale(1);
-	}
+.inno-workspace-switcher-search {
+	height: 36px;
+	margin: -7px -7px 0;
+	padding: 0 11px;
+	border: 0;
+	border-bottom: 1px solid var(--inno-border);
+	border-radius: 0;
+	background: transparent;
 }
 
-.inno-workspace-search {
-	display: flex;
-	flex: 0 0 auto;
-	height: 32px;
-	align-items: center;
-	gap: 7px;
-	padding: 0 8px;
-	border: 1px solid transparent;
-	border-radius: 9px;
+.inno-workspace-switcher-search:focus-within {
+	border-bottom-color: var(--inno-border-strong);
+	box-shadow: none;
+}
+
+.inno-sidebar-user-menu {
+	width: min(224px, calc(100vw - 16px));
+	padding: 6px;
+}
+
+.inno-sidebar-user-menu-option {
+	min-height: 34px;
+}
+
+.inno-workspace-sort-menu {
+	min-width: 180px;
+}
+
+.inno-workspace-sort-option {
+	min-height: 32px;
+}
+
+.inno-workspace-sort-menu .inno-workspace-sort-option[data-highlighted]:not([data-disabled]) {
 	background: var(--inno-surface-muted);
-	color: var(--inno-text-subtle);
 }
 
-.inno-workspace-search:focus-within {
-	border-color: var(--inno-border-strong);
-	box-shadow: var(--inno-ring);
-}
-
-.inno-workspace-search input,
 .inno-workspace-search-input {
 	min-width: 0;
 	flex: 1;
@@ -3522,143 +5276,26 @@ inno-workspace-panel textarea {
 	font-size: 12px;
 }
 
-.inno-workspace-search input:focus,
-.inno-workspace-search input:focus-visible {
-	outline: none;
-	box-shadow: none;
-}
-
-.inno-workspace-search input::placeholder,
 .inno-workspace-search-input::placeholder {
 	color: var(--inno-text-subtle);
 }
 
-.inno-workspace-search-clear {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 20px;
-	height: 20px;
-	padding: 0;
-	border: 0;
-	border-radius: 6px;
-	background: transparent;
-	color: var(--inno-text-subtle);
-	cursor: pointer;
-}
 
-.inno-workspace-search-clear:hover {
-	background: var(--inno-surface);
-	color: var(--inno-text);
-}
-
-.inno-preset-search-input,
-.inno-preset-search-input:focus,
-.inno-preset-search-input:focus-visible {
-	border: 0;
-	outline: none;
-	box-shadow: none;
-}
-
-.inno-workspace-options {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	min-height: 0;
-	flex: 1 1 auto;
-	max-height: 224px;
-	overflow-y: auto;
-	scrollbar-gutter: stable;
-}
-
-.inno-workspace-option,
-.inno-workspace-action {
-	display: flex;
-	flex: 0 0 auto;
-	width: 100%;
-	min-width: 0;
-	align-items: center;
-	gap: 9px;
-	min-height: 48px;
+.inno-ui-searchable-select-option.inno-workspace-option {
+	min-height: 36px;
 	padding: 5px 8px;
-	border: 0;
-	border-radius: 9px;
-	background: transparent;
-	color: var(--inno-text);
 	font-size: 12px;
 	line-height: 16px;
-	text-align: left;
-	cursor: pointer;
-	transition: background-color var(--inno-dur-ui) var(--inno-ease-out), color var(--inno-dur-ui) var(--inno-ease-out);
 }
 
-.inno-workspace-option:hover,
-.inno-workspace-option.is-selected,
-.inno-workspace-action:hover,
-.inno-workspace-action.is-selected {
-	background: var(--inno-accent-soft);
-	color: var(--inno-accent);
+.inno-workspace-switcher-menu .inno-ui-searchable-select-option[data-selected="true"],
+.inno-workspace-switcher-menu .inno-ui-searchable-select-action[data-selected="true"] {
+	background: transparent;
+	color: var(--inno-text);
 }
 
-.inno-workspace-option-icon,
-.inno-workspace-action-icon {
-	display: inline-flex;
-	flex: 0 0 auto;
-	align-items: center;
-	justify-content: center;
-	color: var(--inno-text-subtle);
-}
-
-.inno-workspace-option-copy {
-	display: flex;
-	min-width: 0;
-	flex: 1;
-	flex-direction: column;
-	gap: 1px;
-	line-height: 1;
-}
-
-.inno-workspace-option-name,
-.inno-workspace-option-path {
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.inno-workspace-option-name {
-	font-weight: 500;
-	line-height: 17px;
-}
-
-.inno-workspace-option-path {
-	color: var(--inno-text-subtle);
-	font-size: 10px;
-	line-height: 13px;
-}
-
-.inno-workspace-option-check {
-	flex: 0 0 auto;
-	color: var(--inno-accent);
-}
-
-.inno-workspace-menu-divider {
-	flex: 0 0 auto;
-	height: 1px;
-	margin: 1px 2px;
-	background: var(--inno-border);
-}
-
-.inno-workspace-action {
-	min-height: 36px;
+.inno-workspace-switcher-menu .inno-ui-searchable-select-check {
 	color: var(--inno-text-muted);
-}
-
-.inno-workspace-empty {
-	padding: 18px 8px;
-	color: var(--inno-text-subtle);
-	font-size: 12px;
-	text-align: center;
 }
 
 .inno-workspace-create-form {
@@ -3668,6 +5305,17 @@ inno-workspace-panel textarea {
 	flex-direction: column;
 	gap: 8px;
 	padding: 3px 2px 1px;
+}
+
+.inno-sidebar-project-create-popover {
+	width: 240px;
+	padding: 8px;
+}
+
+.inno-sidebar-project-create-error {
+	padding: 0 6px;
+	color: var(--inno-danger);
+	font-size: 11px;
 }
 
 .inno-workspace-menu-heading {
@@ -3692,8 +5340,8 @@ inno-workspace-panel textarea {
 }
 
 .inno-workspace-search-input:focus {
-	border-color: var(--inno-focus-border);
-	box-shadow: var(--inno-ring);
+	border-color: var(--inno-border-strong);
+	box-shadow: none;
 }
 
 .inno-workspace-create-submit {
@@ -3784,6 +5432,12 @@ inno-workspace-panel textarea {
 .inno-composer-stop {
 	border: 0;
 	background: var(--inno-danger);
+	box-shadow: var(--inno-shadow-soft);
+}
+
+.inno-composer .inno-composer-stop:hover:not(:disabled) {
+	background: var(--inno-danger);
+	color: white;
 	box-shadow: var(--inno-shadow-soft);
 }
 
@@ -3882,8 +5536,8 @@ inno-workspace-panel textarea {
 	flex-shrink: 0;
 }
 
-.inno-workspace-tree-toolbar button,
-.inno-workspace-content-toolbar button {
+.inno-workspace-tree-toolbar .inno-ui-icon-button,
+.inno-workspace-content-toolbar .inno-ui-icon-button {
 	line-height: 0;
 }
 
@@ -3895,13 +5549,39 @@ inno-workspace-panel textarea {
 	border: 1px solid transparent;
 	background: transparent;
 	color: var(--inno-text-subtle);
-	transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+	transition: background-color var(--inno-dur-ui) var(--inno-ease-out), border-color var(--inno-dur-ui) var(--inno-ease-out), color var(--inno-dur-ui) var(--inno-ease-out);
 }
 
 .inno-workspace-selection-action:hover {
 	border-color: var(--inno-border);
 	background: var(--inno-surface-muted);
 	color: var(--inno-text);
+}
+
+.inno-workspace-selection-action[aria-pressed="true"],
+.inno-workspace-selection-action[aria-pressed="true"]:hover {
+	background: var(--inno-accent-soft);
+	color: var(--inno-accent);
+}
+
+.inno-filter-button,
+.inno-filter-button:hover:not(:disabled) {
+	box-shadow: none;
+}
+
+.inno-notebook-filter-button {
+	padding: 0 8px;
+	font-size: 12px;
+}
+
+.inno-danger-button.inno-ui-icon-button {
+	background: transparent;
+	box-shadow: none;
+}
+
+.inno-danger-button.inno-ui-icon-button:hover:not(:disabled) {
+	background: var(--inno-danger-bg);
+	color: var(--inno-danger);
 }
 
 /* Keep file extensions visible when the filename stem needs to truncate. */
@@ -3997,9 +5677,8 @@ inno-workspace-panel textarea {
 	line-height: 1.2;
 }
 
-/* Workspace group labels are buttons for keyboard/click navigation. Remove
-   the browser's native button face so the active group header keeps its own
-   sidebar background instead of showing a white rectangle behind the label. */
+/* Workspace group titles are transparent at rest; the row surface only
+   appears on hover. Remove the native button face from the title control. */
 .inno-sidebar-scope button.inno-sidebar-workspace-button {
 	-webkit-appearance: none;
 	appearance: none;
@@ -4007,6 +5686,19 @@ inno-workspace-panel textarea {
 	background: transparent;
 	padding: 0;
 	text-align: left;
+}
+
+.inno-sidebar-scope .inno-sidebar-workspace-title--collapsed {
+	color: color-mix(in srgb, var(--inno-text-subtle) 70%, var(--inno-sidebar-bg));
+}
+
+.inno-sidebar-scope .inno-sidebar-workspace-header {
+	min-height: 36px;
+}
+
+.inno-sidebar-scope .inno-sidebar-workspace-header--compact {
+	height: 33px;
+	min-height: 33px;
 }
 
 .inno-workspace-scope {
@@ -4210,6 +5902,7 @@ inno-workspace-panel textarea {
 .sidebar-scroll {
 	scrollbar-width: thin;
 	scrollbar-color: var(--inno-scrollbar-thumb) transparent;
+	scrollbar-gutter: stable;
 }
 
 /*
@@ -4330,7 +6023,6 @@ button.inno-smart-ref-chip:hover {
 	position: fixed;
 	z-index: 60;
 	padding: 8px;
-	animation: inno-smart-panel-in var(--inno-dur-ui) var(--inno-ease-out);
 }
 .inno-smart-panel.is-closing {
 	opacity: 0;
@@ -4421,13 +6113,9 @@ button.inno-smart-ref-chip:hover {
 	color: var(--inno-text-subtle);
 }
 
-@keyframes inno-smart-panel-in {
-	from { opacity: 0; transform: translateY(4px); }
-	to { opacity: 1; transform: translateY(0); }
-}
-
 /* ── Composer attachment menu (📎 workspace + local files) ── */
 .inno-smart-attach-menu {
+	width: min(240px, calc(100vw - 16px));
 	max-height: 264px;
 	overflow-y: auto;
 	/* Keep the menu's content box stable when the scrollbar is first used. */
@@ -4480,7 +6168,7 @@ button.inno-smart-ref-chip:hover {
    same mobile metrics. A generic textarea rule is not enough: the active
    smart-input selector below has higher specificity and used to restore
    14px, triggering focus zoom on iOS. Keep pinch-to-zoom available. */
-@media (max-width: 960px), (pointer: coarse) {
+@media (pointer: coarse) {
 	.inno-smart-wrap {
 		--inno-smart-font-size: 16px;
 		--inno-smart-line-height: 24px;
@@ -5174,37 +6862,28 @@ body.inno-smart-dragging .inno-smart-kw-hit::before {
 }
 /* ── Context menu ── */
 .inno-smart-menu {
-	position: fixed;
-	z-index: 60;
 	min-width: 180px;
-	padding: 4px;
-	border: 1px solid var(--inno-border);
-	border-radius: 10px;
-	background: var(--inno-surface-raised);
-	box-shadow: var(--inno-shadow-soft);
-	animation: inno-smart-panel-in var(--inno-dur-ui) var(--inno-ease-out);
 }
 .inno-smart-menu-item {
-	display: block;
-	width: 100%;
-	border: 0;
-	border-radius: 6px;
-	background: transparent;
 	padding: 6px 10px;
+	min-height: 32px;
 	font-size: 12px;
-	text-align: left;
-	color: var(--inno-text);
-	cursor: pointer;
-	transition: background var(--inno-dur-fast) var(--inno-ease-out);
-}
-.inno-smart-menu-item:hover {
-	background: var(--inno-accent-soft);
 }
 .inno-smart-menu-item.is-danger {
 	color: var(--inno-danger);
 }
 .inno-smart-menu-item.is-danger:hover {
 	background: var(--inno-danger-bg);
+}
+
+.inno-context-menu-anchor {
+	position: fixed;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	border: 0;
+	opacity: 0;
+	pointer-events: none;
 }
 
 /* ── Workspace files are draggable from the whole row ── */
@@ -5316,7 +6995,7 @@ body.inno-smart-dragging .inno-smart-kw-hit::before {
 	box-sizing: border-box;
 	height: 28px;
 	border-radius: 9999px;
-	border: 1px solid color-mix(in srgb, var(--inno-accent) 55%, transparent);
+	border: 1px solid var(--inno-border);
 	background: var(--inno-surface);
 	padding: 3px 10px;
 	font-size: 12px;
@@ -5324,7 +7003,7 @@ body.inno-smart-dragging .inno-smart-kw-hit::before {
 	line-height: 20px;
 	color: var(--inno-text);
 	outline: none;
-	box-shadow: var(--inno-ring);
+	box-shadow: none;
 }
 .inno-smart-set-keyword-input.is-primary {
 	flex: 0 1 150px;
@@ -5479,7 +7158,7 @@ body.inno-smart-dragging .inno-smart-kw-hit::before {
 .inno-smart-set-ext-input {
 	width: 76px;
 	border-radius: 6px;
-	border: 1px solid color-mix(in srgb, var(--inno-accent) 55%, transparent);
+	border: 1px solid var(--inno-border);
 	background: var(--inno-surface);
 	padding: 1px 6px;
 	font-size: 11px;
@@ -5601,5 +7280,327 @@ body.inno-smart-dragging .inno-smart-kw-hit::before {
 @media (pointer: coarse) {
 	.inno-composer-newline {
 		display: inline-flex;
+	}
+}
+
+/* Unified search: an in-page overlay in browsers and a focused surface in the
+   Electron search window. */
+.inno-search-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 250;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+	background: color-mix(in srgb, #0b1220 38%, transparent);
+	backdrop-filter: blur(3px);
+}
+
+.inno-search-window-root {
+	box-sizing: border-box;
+	width: 100%;
+	height: 100vh;
+	height: 100dvh;
+	min-height: 0;
+	padding: 8px 16px 0;
+	color: var(--inno-text);
+	background: var(--inno-chat-bg);
+}
+
+.inno-search-window-root--mac-titlebar {
+	position: relative;
+	padding-top: 32px;
+}
+
+.inno-search-window-drag-region {
+	position: absolute;
+	top: 0;
+	right: 0;
+	left: 76px;
+	height: 32px;
+	-webkit-app-region: drag;
+}
+
+.inno-search-surface {
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+	color: var(--inno-text);
+	background: var(--inno-surface);
+	border: 1px solid var(--inno-border);
+	border-radius: 18px;
+	box-shadow: var(--inno-shadow-soft);
+	overflow: hidden;
+}
+
+.inno-search-surface--overlay {
+	width: min(800px, 100%);
+	height: min(640px, calc(100dvh - 48px));
+	max-height: min(640px, calc(100dvh - 48px));
+	padding: 16px;
+}
+
+.inno-search-surface--window {
+	width: 100%;
+	height: 100%;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
+.inno-search-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.inno-search-input-wrap {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	flex: 1;
+	height: 38px;
+	padding: 0 12px;
+	color: var(--inno-text-muted);
+	background: var(--inno-surface);
+	border: 1px solid var(--inno-border);
+	border-radius: 10px;
+}
+
+.inno-search-input-wrap:focus-within {
+	border-color: var(--inno-border-strong);
+}
+
+.inno-search-input {
+	width: 100%;
+	min-width: 0;
+	border: 0;
+	outline: 0;
+	background: transparent;
+	color: var(--inno-text);
+	font: inherit;
+	font-size: 14px;
+}
+
+.inno-search-input::placeholder {
+	color: var(--inno-text-subtle);
+}
+
+.inno-search-close {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	flex: 0 0 auto;
+	border: 1px solid var(--inno-border);
+	border-radius: 8px;
+	background: var(--inno-surface);
+	color: var(--inno-text-muted);
+	cursor: pointer;
+}
+
+.inno-search-close:hover {
+	background: var(--inno-surface-muted);
+	color: var(--inno-text);
+}
+
+.inno-search-tabs {
+	display: flex;
+	align-items: stretch;
+	gap: 4px;
+	min-width: 0;
+	margin-top: 12px;
+	border-bottom: 1px solid var(--inno-border);
+}
+
+.inno-search-tab {
+	position: relative;
+	min-height: 34px;
+	padding: 0 9px;
+	border: 0;
+	background: transparent;
+	color: var(--inno-text-muted);
+	font: inherit;
+	font-size: 12.5px;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.inno-search-tab:hover,
+.inno-search-tab.is-active {
+	color: var(--inno-accent);
+}
+
+.inno-search-tab.is-active::after {
+	position: absolute;
+	right: 5px;
+	bottom: -1px;
+	left: 5px;
+	height: 2px;
+	border-radius: 2px 2px 0 0;
+	background: var(--inno-accent);
+	content: "";
+}
+
+.inno-search-results {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+	overscroll-behavior: contain;
+	padding: 10px 0;
+}
+
+.inno-search-empty,
+.inno-search-status {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 9px;
+	min-height: 150px;
+	color: var(--inno-text-muted);
+	font-size: 13px;
+}
+
+.inno-search-empty {
+	flex-direction: column;
+	position: absolute;
+	inset: 0;
+	color: color-mix(in srgb, var(--inno-accent) 42%, var(--inno-text-subtle));
+}
+
+.inno-search-empty p {
+	margin: 0;
+	color: var(--inno-text-subtle);
+}
+
+.inno-search-group + .inno-search-group {
+	margin-top: 8px;
+}
+
+.inno-search-group-title {
+	margin: 2px 8px 5px;
+	color: var(--inno-text-subtle);
+	font-size: 11px;
+	font-weight: 500;
+}
+
+.inno-search-result {
+	display: flex;
+	align-items: flex-start;
+	gap: 11px;
+	width: 100%;
+	min-width: 0;
+	padding: 9px 10px;
+	border: 1px solid transparent;
+	border-radius: 9px;
+	background: transparent;
+	color: var(--inno-text);
+	text-align: left;
+	cursor: pointer;
+}
+
+.inno-search-result:hover,
+.inno-search-result[data-active="true"] {
+	background: var(--inno-accent-soft);
+}
+
+.inno-search-result:focus-visible,
+.inno-search-tab:focus-visible,
+.inno-search-close:focus-visible {
+	outline: 2px solid color-mix(in srgb, var(--inno-accent) 60%, transparent);
+	outline-offset: 1px;
+}
+
+.inno-search-result-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	flex: 0 0 auto;
+	color: var(--inno-accent);
+}
+
+.inno-search-result-copy {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.inno-search-result-title {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	font-size: 13px;
+	font-weight: 550;
+}
+
+.inno-search-result-subtitle,
+.inno-search-result-snippet {
+	overflow: hidden;
+	color: var(--inno-text-muted);
+	font-size: 11.5px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.inno-search-result-snippet {
+	color: var(--inno-text-subtle);
+}
+
+.inno-search-result-badge {
+	flex: 0 0 auto;
+	padding: 2px 6px;
+	border-radius: 999px;
+	background: var(--inno-surface-muted);
+	color: var(--inno-text-subtle);
+	font-size: 10px;
+	font-weight: 400;
+}
+
+.inno-search-footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 16px;
+	min-height: 36px;
+	padding: 5px 8px 0;
+	border-top: 1px solid var(--inno-border);
+	color: var(--inno-text-subtle);
+	font-size: 11px;
+}
+
+.inno-search-window-root .inno-search-footer {
+	min-height: 37px;
+	padding-bottom: 8px;
+}
+
+@media (max-width: 640px) {
+	.inno-search-overlay {
+		align-items: stretch;
+		padding: 8px;
+	}
+	.inno-search-surface--overlay {
+		width: 100%;
+		height: 100%;
+		max-height: 100%;
+		padding: 12px;
+		border-radius: 14px;
+	}
+	.inno-search-tab {
+		padding-right: 6px;
+		padding-left: 6px;
+		font-size: 11.5px;
 	}
 }

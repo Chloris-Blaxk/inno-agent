@@ -3,6 +3,9 @@ import type { WorkspaceMode } from "./app-store.js";
 /** The chat should remain usable while optional panels are visible. */
 export const CHAT_BASELINE_WIDTH = 800;
 export const SIDEBAR_WIDTH = 264;
+export const DESKTOP_SIDEBAR_RAIL_WIDTH = 52;
+export const DESKTOP_SIDEBAR_CONTENT_WIDTH = 246;
+export const DESKTOP_SIDEBAR_WIDTH = DESKTOP_SIDEBAR_RAIL_WIDTH + DESKTOP_SIDEBAR_CONTENT_WIDTH;
 export const WORKSPACE_QUARTER_MIN_WIDTH = 240;
 export const WORKSPACE_MIN_WIDTH = 320;
 // Keep the split view close to the reference proportions: a 260px file tree
@@ -12,6 +15,16 @@ export const WORKSPACE_MAX_WIDTH = 920;
 
 /** At and below this viewport width the chat is the only column; other panels become overlays. */
 export const CHAT_ONLY_BP = 960;
+
+/** The desktop Chat panel may only stay pinned when it fits beside the chat. */
+export const DESKTOP_SIDEBAR_EXPANDED_MIN_WIDTH = CHAT_BASELINE_WIDTH + DESKTOP_SIDEBAR_WIDTH;
+
+export function getSidebarLayoutWidth(sidebarCollapsed: boolean, isDesktopWindow = false): number {
+	if (isDesktopWindow) {
+		return DESKTOP_SIDEBAR_RAIL_WIDTH + (sidebarCollapsed ? 0 : DESKTOP_SIDEBAR_CONTENT_WIDTH);
+	}
+	return sidebarCollapsed ? 0 : SIDEBAR_WIDTH;
+}
 
 export function getEffectiveWorkspaceWidth(width: number, mode: WorkspaceMode = "half"): number {
 	const minWidth = mode === "quarter" ? WORKSPACE_QUARTER_MIN_WIDTH : WORKSPACE_MIN_WIDTH;
@@ -26,9 +39,10 @@ export function getMaximumWorkspaceWidth(
 	viewportWidth: number,
 	sidebarCollapsed: boolean,
 	mode: WorkspaceMode,
+	isDesktopWindow = false,
 ): number {
 	const minWidth = mode === "quarter" ? WORKSPACE_QUARTER_MIN_WIDTH : WORKSPACE_MIN_WIDTH;
-	const availableWidth = viewportWidth - CHAT_BASELINE_WIDTH - (sidebarCollapsed ? 0 : SIDEBAR_WIDTH);
+	const availableWidth = viewportWidth - CHAT_BASELINE_WIDTH - getSidebarLayoutWidth(sidebarCollapsed, isDesktopWindow);
 	return Math.max(minWidth, Math.min(WORKSPACE_MAX_WIDTH, Math.round(availableWidth)));
 }
 
@@ -51,6 +65,7 @@ export function fitPanelLayout(
 	sidebarCollapsed: boolean,
 	workspaceMode: WorkspaceMode,
 	workspaceWidth: number,
+	isDesktopWindow = false,
 ): FittedPanelLayout | null {
 	if (workspaceMode === "collapsed" || workspaceMode === "full") {
 		return { sidebarCollapsed, workspaceMode, workspaceWidth };
@@ -59,14 +74,16 @@ export function fitPanelLayout(
 	let nextSidebarCollapsed = sidebarCollapsed;
 	let availableWorkspaceWidth = viewportWidth
 		- CHAT_BASELINE_WIDTH
-		- (nextSidebarCollapsed ? 0 : SIDEBAR_WIDTH);
+		- getSidebarLayoutWidth(nextSidebarCollapsed, isDesktopWindow);
 
 	// If the requested workspace would squeeze the chat, hide the optional
 	// left column first. This is used by direct workspace-opening call sites
 	// that do not go through the Electron window-expansion path.
 	if (availableWorkspaceWidth < WORKSPACE_QUARTER_MIN_WIDTH && !nextSidebarCollapsed) {
 		nextSidebarCollapsed = true;
-		availableWorkspaceWidth = viewportWidth - CHAT_BASELINE_WIDTH;
+		availableWorkspaceWidth = viewportWidth
+			- CHAT_BASELINE_WIDTH
+			- getSidebarLayoutWidth(true, isDesktopWindow);
 	}
 
 	let nextWorkspaceMode = workspaceMode;
@@ -91,8 +108,8 @@ export function fitPanelLayout(
 }
 
 /** Whether a quarter-width workspace can open while keeping the sidebar visible. */
-export function canOpenWorkspaceBesideSidebar(viewportWidth: number, workspaceWidth: number): boolean {
-	const fitted = fitPanelLayout(viewportWidth, false, "quarter", workspaceWidth);
+export function canOpenWorkspaceBesideSidebar(viewportWidth: number, workspaceWidth: number, isDesktopWindow = false): boolean {
+	const fitted = fitPanelLayout(viewportWidth, false, "quarter", workspaceWidth, isDesktopWindow);
 	return fitted?.sidebarCollapsed === false;
 }
 

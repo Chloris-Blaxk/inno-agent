@@ -17,6 +17,7 @@ import {
 import type { ChatTraceStep, ChatTraceStepKind, ChatTraceStepStatus } from "../../types/chat.js";
 import type { AnsweredQuestionnaireView } from "../../utils/questionnaire.js";
 import { MarkdownArtifact } from "../MarkdownArtifact.js";
+import { Tooltip } from "../ui/Tooltip.js";
 import { AnsweredQuestionCard } from "./AnsweredQuestionCard.js";
 import {
 	isOpenStatus,
@@ -402,7 +403,9 @@ function TraceRow({ step, now, isCurrentLiveStep, expanded, onToggle, t, onOpenS
 						</>
 					) : summary}
 				</span>
-				<span className={`inno-trace-status ${step.status}`} title={statusLabel(step.status, t)}>{statusIcon(step.status)}</span>
+				<Tooltip label={statusLabel(step.status, t)}>
+					<span className={`inno-trace-status ${step.status}`}>{statusIcon(step.status)}</span>
+				</Tooltip>
 				<ChevronRight size={14} className={`inno-trace-chevron ${expanded ? "is-open" : ""}`} aria-hidden="true" />
 			</button>
 			{expanded ? <div className="inno-trace-row-details"><TraceDetails step={step} onOpenSkill={onOpenSkill} t={t} /></div> : null}

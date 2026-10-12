@@ -7,6 +7,7 @@ import { ForceSimulation, type SimLink, type SimNode } from "./force-simulation.
 import type { WikiGraphEdge, WikiGraphNode } from "../../types/wiki.js";
 import { notebookStore } from "../../stores/notebook-store.js";
 import { useStoreSnapshot } from "../hooks.js";
+import { Button, SegmentedControl } from "../ui/index.js";
 
 type NodeCategory = "source" | "entity" | "concept" | "comparison" | "synthesis" | "analysis" | "tag";
 type GraphColorMode = "type" | "community";
@@ -616,64 +617,51 @@ export function GraphView() {
 	return (
 		<div className="relative flex h-full min-h-0 flex-col overflow-hidden">
 			<div className="@container flex w-full min-w-0 items-center gap-2 overflow-x-auto whitespace-nowrap border-b border-[var(--inno-border)] bg-[var(--inno-surface)] px-3 py-2 text-xs text-[var(--inno-text-muted)]">
-				<button className="inline-flex items-center gap-1 rounded-md border border-[var(--inno-border)] bg-[var(--inno-surface)] px-2 py-1 hover:bg-[var(--inno-surface-muted)] hover:text-[var(--inno-text)]" onClick={fit} title={t("notebook.graph.fit")}>
+				<Button variant="secondary" size="xs" aria-label={t("notebook.graph.fit")} onClick={fit} title={t("notebook.graph.fit")}>
 					<Scan size={14} />
 					<span className="hidden @[1050px]:inline">{t("notebook.graph.fit")}</span>
-				</button>
-				<button className="inline-flex items-center gap-1 rounded-md border border-[var(--inno-border)] bg-[var(--inno-surface)] px-2 py-1 hover:bg-[var(--inno-surface-muted)] hover:text-[var(--inno-text)]" onClick={reLayout} title={t("notebook.graph.relayout")}>
+				</Button>
+				<Button variant="secondary" size="xs" aria-label={t("notebook.graph.relayout")} onClick={reLayout} title={t("notebook.graph.relayout")}>
 					<Shuffle size={14} />
 					<span className="hidden @[1050px]:inline">{t("notebook.graph.relayout")}</span>
-				</button>
-				<button className="inline-flex items-center gap-1 rounded-md border border-[var(--inno-border)] bg-[var(--inno-surface)] px-2 py-1 hover:bg-[var(--inno-surface-muted)] hover:text-[var(--inno-text)]" onClick={() => void notebookStore.loadGraph()} title={t("notebook.graph.refresh")}>
+				</Button>
+				<Button variant="secondary" size="xs" aria-label={t("notebook.graph.refresh")} onClick={() => void notebookStore.loadGraph()} title={t("notebook.graph.refresh")}>
 					<RefreshCw size={14} />
 					<span className="hidden @[1050px]:inline">{t("notebook.graph.refresh")}</span>
-				</button>
+				</Button>
 				<div className="mx-1 h-4 w-px bg-[var(--inno-surface-muted)]" />
-				<div className="inline-flex rounded-md border border-[var(--inno-border)] bg-[var(--inno-surface-muted)] p-0.5">
-					<button
-						type="button"
-						onClick={() => setColorMode("type")}
-						className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${colorMode === "type" ? "bg-[var(--inno-surface)] text-[var(--inno-text)] shadow-sm" : "text-[var(--inno-text-subtle)]"}`}
-						title={t("notebook.graph.colorType")}
-						aria-pressed={colorMode === "type"}
-					>
-						<Tag size={13} />
-						<span className="hidden @[900px]:inline">{t("notebook.graph.colorType")}</span>
-					</button>
-					<button
-						type="button"
-						onClick={() => setColorMode("community")}
-						className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${colorMode === "community" ? "bg-[var(--inno-surface)] text-[var(--inno-text)] shadow-sm" : "text-[var(--inno-text-subtle)]"}`}
-						title={t("notebook.graph.colorCommunity")}
-						aria-pressed={colorMode === "community"}
-					>
-						<Network size={13} />
-						<span className="hidden @[900px]:inline">{t("notebook.graph.colorCommunity")}</span>
-					</button>
-				</div>
+				<SegmentedControl
+					value={colorMode}
+					onValueChange={setColorMode}
+					ariaLabel={t("notebook.graph.colorMode")}
+					items={[
+						{ value: "type", ariaLabel: t("notebook.graph.colorType"), title: t("notebook.graph.colorType"), label: <><Tag size={13} /><span className="hidden @[900px]:inline">{t("notebook.graph.colorType")}</span></> },
+						{ value: "community", ariaLabel: t("notebook.graph.colorCommunity"), title: t("notebook.graph.colorCommunity"), label: <><Network size={13} /><span className="hidden @[900px]:inline">{t("notebook.graph.colorCommunity")}</span></> },
+					]}
+				/>
 				<div className="mx-1 h-4 w-px bg-[var(--inno-surface-muted)]" />
 				<span className="text-[var(--inno-text-subtle)]">{t("notebook.graph.show")}</span>
 				{ALL_CATEGORIES.map((cat) => {
 					const active = visibleCategories.has(cat);
 					const color = TYPE_COLORS[cat];
 					return (
-						<button
+						<Button
 							key={cat}
-							type="button"
+							variant={active ? "primary" : "secondary"}
+							size="xs"
+							shape="pill"
+							aria-pressed={active}
 							onClick={() => toggleCategory(cat)}
-							className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition ${
-								active
-									? "border-[var(--inno-border-strong)] bg-[var(--inno-surface)] text-[var(--inno-text)] hover:bg-[var(--inno-surface-muted)]"
-									: "border-[var(--inno-border)] bg-[var(--inno-surface-muted)] text-[var(--inno-text-subtle)] line-through hover:bg-[var(--inno-surface-muted)]"
-							}`}
+							className="inno-filter-button inno-graph-category-filter shrink-0"
 							title={t(`notebook.types.${cat}`)}
 						>
 							<span
+								aria-hidden="true"
 								className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
 								style={{ backgroundColor: color, opacity: active ? 1 : 0.4 }}
 							/>
-							<span className="hidden @[1050px]:inline">{t(`notebook.types.${cat}`)}</span>
-						</button>
+							<span className={`hidden @[1050px]:inline ${active ? "" : "line-through"}`}>{t(`notebook.types.${cat}`)}</span>
+						</Button>
 					);
 				})}
 				<div className="ml-auto hidden shrink-0 text-right @[900px]:block">
@@ -707,12 +695,14 @@ export function GraphView() {
 							</span>
 						) : null}
 						{displayNode.type !== "tag" ? (
-							<button
-								className="ml-auto shrink-0 rounded-md inno-primary-button px-2 py-0.5 text-xs text-white"
+							<Button
+								variant="primary"
+								size="xs"
+								className="ml-auto shrink-0"
 								onClick={() => void notebookStore.selectPage(displayNode.id)}
 							>
 								{t("notebook.inspector.openPage")}
-							</button>
+							</Button>
 						) : null}
 					</div>
 				) : null}

@@ -1,9 +1,12 @@
 import { EventEmitter } from "./event-emitter.js";
 import { streamChat, abortChat, getChatStatus, streamSessionEvents, submitChatQuestion, submitChatPermission, formatQuestionnaireAsPrompt } from "../api/chat.js";
+import { stopJobRun } from "../api/jobs.js";
+import { getSession } from "../api/sessions.js";
 import type { InlineImage } from "../api/chat.js";
 import type { ChatAttachments, ChatMessage, ChatStreamEvent, ChatToolRecord, ChatTraceStep, PendingPermission, PendingQuestion, PermissionDecisionKind, QuestionnaireResult, StreamEventEnvelope, StreamSnapshot, WorkspaceFileChange } from "../types/chat.js";
 import { notebookStore } from "./notebook-store.js";
 import { appStore } from "./app-store.js";
+import { sessionsStore } from "./sessions-store.js";
 import { workspaceStore, type StreamingWorkspacePreview } from "./workspace-store.js";
 import { ensureWindowForPanel } from "./window-expansion.js";
 import { applyChatTraceEvent, finalizeTraceSteps, traceStepsFromEvents, traceTerminalState } from "../utils/chat-trace.js";
@@ -153,7 +156,6 @@ export class ChatStoreImpl extends EventEmitter<ChatStoreEvents> {
 
 	async send(prompt: string, images?: InlineImage[], sessionIdOverride?: string | null, attachments?: ChatAttachments): Promise<void> {
 		if ((!prompt.trim() && !images?.length && !hasAttachmentFiles(attachments)) || this.isSending) return;
-		const { sessionsStore } = await import("./sessions-store.js");
 		const targetSessionId = sessionIdOverride === undefined
 			? sessionsStore.currentSessionId
 			: sessionIdOverride;
@@ -240,7 +242,7 @@ export class ChatStoreImpl extends EventEmitter<ChatStoreEvents> {
 		const sessionId = this.jobStreamSessionId;
 		this.jobStreamController?.abort();
 		if (sessionId) {
-			void import("../api/jobs.js").then((module) => module.stopJobRun(sessionId).catch(() => {}));
+			void stopJobRun(sessionId).catch(() => {});
 		}
 	}
 
@@ -646,7 +648,6 @@ export class ChatStoreImpl extends EventEmitter<ChatStoreEvents> {
 	}
 
 	private async reloadCanonicalHistory(owner: ActiveStreamOwner, finalMessageCount?: number, finalRevision?: string): Promise<boolean> {
-		const { getSession } = await import("../api/sessions.js");
 		for (let attempt = 0; attempt < RECONNECT_DELAYS_MS.length; attempt++) {
 			try {
 				const session = await getSession(owner.sessionId);
@@ -775,7 +776,7 @@ export class ChatStoreImpl extends EventEmitter<ChatStoreEvents> {
 		this.wikiInvalidated = false;
 		this.emit("change", undefined);
 		if (shouldRefreshWiki) void notebookStore.loadAll();
-		void import("./sessions-store.js").then((module) => module.sessionsStore.refreshUntilTopic(owner.sessionId));
+		void sessionsStore.refreshUntilTopic(owner.sessionId);
 	}
 
 	private _handleStreamEvent(event: ChatStreamEvent, owner: ActiveStreamOwner, occurredAt?: string) {

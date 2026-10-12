@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pageFromSearch } from "./app-store.js";
+import { appStore, pageFromSearch } from "./app-store.js";
 
 describe("pageFromSearch", () => {
 	it("defaults to chat when no params are present", () => {
@@ -36,5 +36,22 @@ describe("pageFromSearch", () => {
 
 	it("?page= wins over ?tab=", () => {
 		expect(pageFromSearch("?page=skills&tab=notebook")).toBe("skills");
+	});
+});
+
+describe("sidebar navigation state", () => {
+	it("does not change the fixed expand state when navigating between pages", () => {
+		const previousCollapsed = appStore.sidebarCollapsed;
+		try {
+			appStore.sidebarCollapsed = true;
+			appStore.setPage("notebook", "none");
+			expect(appStore.sidebarCollapsed).toBe(true);
+			appStore.sidebarCollapsed = false;
+			appStore.setPage("chat", "none");
+			expect(appStore.sidebarCollapsed).toBe(false);
+		} finally {
+			appStore.sidebarCollapsed = previousCollapsed;
+			appStore.setPage("chat", "none");
+		}
 	});
 });

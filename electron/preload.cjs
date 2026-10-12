@@ -19,6 +19,18 @@ function isWindowExpansionSide(value) {
   return value === "left" || value === "right";
 }
 
+function isSearchResult(value) {
+  if (!value || typeof value !== "object") return false;
+  const result = value;
+  if (typeof result.id !== "string" || typeof result.title !== "string"
+    || typeof result.subtitle !== "string" || typeof result.snippet !== "string") return false;
+  if (!["conversation", "workspace", "file", "knowledge"].includes(result.category)) return false;
+  if (result.category === "conversation") return typeof result.sessionId === "string";
+  if (result.category === "workspace") return typeof result.workspaceId === "string";
+  if (result.category === "file") return typeof result.workspaceId === "string" && typeof result.path === "string";
+  return typeof result.path === "string";
+}
+
 contextBridge.exposeInMainWorld("innoDesktop", {
   setCloseDialogCopy(copy) {
     if (isCloseDialogCopy(copy)) {
@@ -46,5 +58,33 @@ contextBridge.exposeInMainWorld("innoDesktop", {
   getWindowWidthCapacity(side) {
     if (!isWindowExpansionSide(side)) return Promise.resolve(0);
     return ipcRenderer.invoke("inno-window-width-capacity", side);
+  },
+  isFullScreen() {
+    return ipcRenderer.invoke("inno-is-full-screen");
+  },
+  onFullScreenChange(callback) {
+    if (typeof callback !== "function") return () => {};
+    const listener = (_event, isFullScreen) => {
+      if (typeof isFullScreen === "boolean") callback(isFullScreen);
+    };
+    ipcRenderer.on("inno-full-screen-change", listener);
+    return () => ipcRenderer.removeListener("inno-full-screen-change", listener);
+  },
+	openSearchWindow(theme) {
+		return ipcRenderer.invoke("inno-open-search-window", theme);
+  },
+  closeSearchWindow() {
+    ipcRenderer.send("inno-close-search-window");
+  },
+  openSearchResult(result) {
+    if (isSearchResult(result)) ipcRenderer.send("inno-search-open-result", result);
+  },
+  onSearchNavigation(callback) {
+    if (typeof callback !== "function") return () => {};
+    const listener = (_event, result) => {
+      if (isSearchResult(result)) callback(result);
+    };
+    ipcRenderer.on("inno-search-navigate", listener);
+    return () => ipcRenderer.removeListener("inno-search-navigate", listener);
   },
 });

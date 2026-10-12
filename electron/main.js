@@ -61,11 +61,13 @@ function ensureConfig() {
 
 // ── 全局状态 ──────────────────────────────────────────────────────────────────
 let mainWindow = null;
+let searchWindow = null;
 let loadingWindow = null;
 let serverProcess = null;
 let tray = null;
 let isQuitting = false;
 let isCloseDialogOpen = false;
+let pendingSearchNavigation = null;
 let closeDialogCopy = {
   title: "关闭 Inno Agent",
   message: "要如何关闭 Inno Agent？",
@@ -104,6 +106,11 @@ ipcMain.handle("inno-open-path", (event, path) => {
   return shell.openPath(path);
 });
 
+ipcMain.handle("inno-is-full-screen", (event) => {
+  if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) return false;
+  return mainWindow.isFullScreen();
+});
+
 ipcMain.on("inno-close-dialog-copy", (_event, copy) => {
   if (!isCloseDialogCopy(copy)) return;
   closeDialogCopy = {
@@ -117,6 +124,102 @@ ipcMain.on("inno-close-dialog-copy", (_event, copy) => {
     },
     remember: copy.remember,
   };
+});
+
+function isSearchResult(value) {
+  if (!value || typeof value !== "object") return false;
+  if (typeof value.id !== "string" || typeof value.title !== "string"
+    || typeof value.subtitle !== "string" || typeof value.snippet !== "string") return false;
+  if (!["conversation", "workspace", "file", "knowledge"].includes(value.category)) return false;
+  if (value.category === "conversation") return typeof value.sessionId === "string";
+  if (value.category === "workspace") return typeof value.workspaceId === "string";
+  if (value.category === "file") return typeof value.workspaceId === "string" && typeof value.path === "string";
+  return typeof value.path === "string";
+}
+
+function sendPendingSearchNavigation() {
+  if (!pendingSearchNavigation || !mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isLoading()) return;
+  const result = pendingSearchNavigation;
+  pendingSearchNavigation = null;
+  mainWindow.webContents.send("inno-search-navigate", result);
+}
+
+function bindSearchShortcut(window) {
+  window.webContents.on("before-input-event", (event, input) => {
+    if (input.type !== "keyDown" || input.key?.toLowerCase() !== "k") return;
+    if (!(input.meta || input.control) || input.alt || input.shift) return;
+    event.preventDefault();
+    void window.webContents.executeJavaScript("document.documentElement.dataset.theme")
+      .then((theme) => openSearchWindow(theme === "dark" ? "dark" : "light"))
+      .catch(() => openSearchWindow());
+  });
+}
+
+function openSearchWindow(theme = "light") {
+  const backgroundColor = theme === "dark" ? "#171717" : "#f5f7fa";
+  if (searchWindow && !searchWindow.isDestroyed()) {
+    searchWindow.setBackgroundColor(backgroundColor);
+    if (searchWindow.isMinimized()) searchWindow.restore();
+    searchWindow.show();
+    searchWindow.focus();
+    return;
+  }
+  if (!mainWindow || mainWindow.isDestroyed()) openMainWindow();
+
+  searchWindow = new BrowserWindow({
+    width: 800,
+    height: 640,
+    center: true,
+    minWidth: 560,
+    minHeight: 420,
+    title: "Inno Agent Search",
+    modal: false,
+    titleBarStyle: process.platform === "darwin" ? "hidden" : undefined,
+    trafficLightPosition: process.platform === "darwin" ? { x: 16, y: 12 } : undefined,
+    backgroundColor,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: join(__dirname, "preload.cjs"),
+      zoomFactor: 1,
+    },
+  });
+  const searchWindowUrl = new URL(`http://localhost:${serverPort}/`);
+  searchWindowUrl.searchParams.set("window", "search");
+  if (process.platform === "darwin") searchWindowUrl.searchParams.set("macTitlebar", "1");
+  searchWindow.loadURL(searchWindowUrl.toString());
+  searchWindow.webContents.on("did-finish-load", () => {
+    if (searchWindow && !searchWindow.isDestroyed()) searchWindow.webContents.setZoomFactor(1);
+  });
+  bindSearchShortcut(searchWindow);
+  searchWindow.on("closed", () => { searchWindow = null; });
+  searchWindow.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      const protocol = new URL(url).protocol;
+      if (protocol === "https:" || protocol === "http:") shell.openExternal(url);
+    } catch { /* deny unparseable URL */ }
+    return { action: "deny" };
+  });
+  searchWindow.show();
+  searchWindow.focus();
+}
+
+ipcMain.handle("inno-open-search-window", (event, theme) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) return false;
+  openSearchWindow(theme === "dark" ? "dark" : "light");
+  return true;
+});
+
+ipcMain.on("inno-close-search-window", (event) => {
+  if (searchWindow && event.sender === searchWindow.webContents) searchWindow.close();
+});
+
+ipcMain.on("inno-search-open-result", (event, result) => {
+  if (!searchWindow || event.sender !== searchWindow.webContents || !isSearchResult(result)) return;
+  pendingSearchNavigation = result;
+  showMainWindow();
+  sendPendingSearchNavigation();
+  searchWindow?.close();
 });
 
 const MAX_WINDOW_EXPANSION = 1200;
@@ -334,6 +437,13 @@ function openMainWindow() {
     },
   });
 
+  mainWindow.on("enter-full-screen", () => {
+    if (!mainWindow?.isDestroyed()) mainWindow?.webContents.send("inno-full-screen-change", true);
+  });
+  mainWindow.on("leave-full-screen", () => {
+    if (!mainWindow?.isDestroyed()) mainWindow?.webContents.send("inno-full-screen-change", false);
+  });
+
   mainWindow.loadURL(`http://localhost:${serverPort}`);
 
   // Chromium remembers per-origin page zoom. Reset it for the local app so a
@@ -342,7 +452,9 @@ function openMainWindow() {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.setZoomFactor(1);
     }
+    sendPendingSearchNavigation();
   });
+  bindSearchShortcut(mainWindow);
 
   // 原生右键菜单：Electron 默认不弹出系统菜单，这里补上文本编辑的基础项。
   mainWindow.webContents.on("context-menu", (event, params) => {

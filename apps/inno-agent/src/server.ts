@@ -51,6 +51,7 @@ import { handleSettingsRoutes } from "./server/routes/settings.js";
 import { handleSkillsRoutes } from "./server/routes/skills.js";
 import { handleWorkspacesRoutes } from "./server/routes/workspaces.js";
 import { handleSessionsRoutes } from "./server/routes/sessions.js";
+import { handleSearchRoutes } from "./server/routes/search.js";
 import { handleLearnerRoutes } from "./server/routes/learner.js";
 import { handleWikiRoutes } from "./server/routes/wiki.js";
 import { handlePresetsRoutes } from "./server/routes/presets.js";
@@ -1203,8 +1204,10 @@ function parseSessionFile(filePath: string): { summary: SessionSummary; messages
 
 		const displayMessages = mergeSessionAgentCommands(dataDir, basename(filePath), filtered);
 		const firstUser = displayMessages.find((message) => message.role === "user");
-		const preview = firstUser?.content.trim() ?? "";
-		const name = preview ? (preview.length > 48 ? `${preview.slice(0, 45)}...` : preview) : basename(filePath);
+		const latestUser = displayMessages.slice().reverse().find((message) => message.role === "user");
+		const firstPrompt = firstUser?.content.trim() ?? "";
+		const preview = latestUser?.content.trim() ?? firstPrompt;
+		const name = firstPrompt ? (firstPrompt.length > 48 ? `${firstPrompt.slice(0, 45)}...` : firstPrompt) : basename(filePath);
 		const stat = statSync(filePath);
 		const fallbackTime = stat.mtime.toISOString();
 		return {
@@ -1379,8 +1382,8 @@ ${excerpt}
  *
  * Two passes, both guarded by `_pendingAutoTopics`:
  * 1. First pass: no topic recorded yet and ≥2 messages (the first exchange).
- *    Persist the user's first-message preview immediately so the UI never
- *    shows a model-generated placeholder or a session-file id.
+ *    Ask the model for a useful title as soon as the first reply is available;
+ *    fall back to the user's first-message preview if generation fails.
  * 2. Upgrade pass: the existing preview is auto-generated (never a manual
  *    rename), hasn't been upgraded yet, and the conversation has grown to
  *    TOPIC_UPGRADE_MESSAGE_THRESHOLD messages — generate a richer summary
@@ -1402,9 +1405,7 @@ function maybeAutoGenerateTopic(sessionId: string): void {
 			const parsed = parseSessionFile(sessionPath);
 			if (!parsed || parsed.messages.length < 2) return;
 			if (existing && parsed.messages.length < TOPIC_UPGRADE_MESSAGE_THRESHOLD) return;
-			const topic = existing
-				? await generateSessionTopic(parsed.summary, parsed.messages)
-				: fallbackTopicFromMessages(parsed.messages, parsed.summary);
+			const topic = await generateSessionTopic(parsed.summary, parsed.messages);
 			writeSessionTopic(sessionId, topic, true, existing ? { upgraded: true } : undefined);
 			logger.info(`[auto-topic] ${sessionId} → ${topic}${existing ? " (upgraded)" : ""}`);
 		} catch (err) {
@@ -1570,6 +1571,11 @@ const server = createServer(async (req, res) => {
 			readSessionQuestionMetadata, writeSessionQuestionMetadata,
 			recordCurrentSessionChannel, generateSessionTopic,
 			sessionFileFromId, releaseQueueFromQuestionBlockedTurn, runQueueOpWithTimeout,
+		})) return;
+
+		// --- Unified local search API ---
+		if (await handleSearchRoutes(req, res, method, url, {
+			dataDir, paths, workspaceRegistry, parseSessionFile,
 		})) return;
 
 		// --- Wiki + L2 raw upload API (extracted to server/routes/wiki.ts) ---

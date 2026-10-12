@@ -15,7 +15,7 @@
 import { logger } from "../../logger.js";
 import { Type } from "typebox";
 import { defineTool, type ToolDefinition } from "@earendil-works/pi-coding-agent";
-import { openL3Store, type L3Store } from "./sqlite-store.js";
+import { openL3Store, type L3SearchHit, type L3Store } from "./sqlite-store.js";
 import { indexAllSessions, indexSession } from "./indexer.js";
 import { recall, formatRecallForPrompt, type RecallResult } from "./recall.js";
 import { join } from "node:path";
@@ -28,6 +28,7 @@ export class L3Memory {
 	private store: L3Store | null = null;
 	private opened = false;
 	private backfilled = false;
+	private backfillPromise: Promise<void> | null = null;
 
 	constructor(
 		private readonly l3DataDir: string,
@@ -47,15 +48,31 @@ export class L3Memory {
 	/** One-time backfill of all existing sessions (cheap: skips unchanged files). */
 	async backfill(): Promise<void> {
 		if (this.backfilled) return;
-		const store = await this.ensureStore();
-		if (!store) return;
-		this.backfilled = true;
+		if (this.backfillPromise) return this.backfillPromise;
+		const run = (async () => {
+			const store = await this.ensureStore();
+			if (!store) return;
+			try {
+				const { sessions, chunks } = indexAllSessions(store, this.sessionDir);
+				this.backfilled = true;
+				if (sessions > 0) logger.info(`[L3] indexed ${chunks} chunks from ${sessions} session(s).`);
+			} catch (err) {
+				logger.warn({ err }, `[L3] backfill failed: ${err instanceof Error ? err.message : String(err)}`);
+			}
+		})();
+		this.backfillPromise = run;
 		try {
-			const { sessions, chunks } = indexAllSessions(store, this.sessionDir);
-			if (sessions > 0) logger.info(`[L3] indexed ${chunks} chunks from ${sessions} session(s).`);
-		} catch (err) {
-			logger.warn({ err }, `[L3] backfill failed: ${err instanceof Error ? err.message : String(err)}`);
+			await run;
+		} finally {
+			if (this.backfillPromise === run) this.backfillPromise = null;
 		}
+	}
+
+	/** Full-text UI search over the visible user/assistant conversation branch. */
+	async searchLexical(query: string, limit = 40): Promise<L3SearchHit[] | null> {
+		await this.backfill();
+		const store = await this.ensureStore();
+		return store ? store.searchLexical(query, limit, 1) : null;
 	}
 
 	/** Incrementally (re)index a single session file by id. */
@@ -87,6 +104,7 @@ export class L3Memory {
 		this.store = null;
 		this.opened = false;
 		this.backfilled = false;
+		this.backfillPromise = null;
 	}
 }
 

@@ -12,9 +12,12 @@ vi.mock("./app-store.js", () => ({ appStore: mocks.appStore }));
 
 import { ensureWindowForPanel } from "./window-expansion.js";
 
-describe("ensureWindowForPanel", () => {
+	describe("ensureWindowForPanel", () => {
 	beforeEach(() => {
 		vi.unstubAllGlobals();
+		mocks.appStore.sidebarCollapsed = false;
+		mocks.appStore.workspaceMode = "collapsed";
+		mocks.appStore.workspaceWidth = 520;
 	});
 
 	it("falls back cleanly for a browser without the Electron bridge", async () => {
@@ -39,12 +42,42 @@ describe("ensureWindowForPanel", () => {
 			expandWindowWidth,
 			getWindowWidthCapacity,
 			openLocalFile: vi.fn(async () => false),
+			openSearchWindow: vi.fn(async () => true),
+			closeSearchWindow: vi.fn(),
+			openSearchResult: vi.fn(),
+			onSearchNavigation: vi.fn(() => () => {}),
 		};
 		vi.stubGlobal("window", windowMock);
 
 		await expect(ensureWindowForPanel("right", 500, "half")).resolves.toBe("ready");
 		expect(getWindowWidthCapacity).toHaveBeenCalledWith("right");
 		expect(getWindowWidthCapacity).toHaveBeenCalledWith("left");
-		expect(expandWindowWidth).toHaveBeenCalledWith("left", 364);
+		expect(expandWindowWidth).toHaveBeenCalledWith("left", 390);
+	});
+
+	it("reserves the 52px rail when expanding a workspace from collapsed desktop state", async () => {
+		mocks.appStore.sidebarCollapsed = true;
+		const windowMock = {
+			innerWidth: 1_100,
+			innoDesktop: {} as NonNullable<Window["innoDesktop"]>,
+		};
+		const expandWindowWidth = vi.fn(async (_side: "left" | "right", additionalWidth: number) => {
+			windowMock.innerWidth += additionalWidth;
+			return true;
+		});
+		windowMock.innoDesktop = {
+			setCloseDialogCopy: vi.fn(),
+			expandWindowWidth,
+			getWindowWidthCapacity: vi.fn(async (side: "left" | "right") => side === "right" ? 252 : 0),
+			openLocalFile: vi.fn(async () => false),
+			openSearchWindow: vi.fn(async () => true),
+			closeSearchWindow: vi.fn(),
+			openSearchResult: vi.fn(),
+			onSearchNavigation: vi.fn(() => () => {}),
+		};
+		vi.stubGlobal("window", windowMock);
+
+		await expect(ensureWindowForPanel("right", 500, "half")).resolves.toBe("ready");
+		expect(expandWindowWidth).toHaveBeenCalledWith("right", 252);
 	});
 });

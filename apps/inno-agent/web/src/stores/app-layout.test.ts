@@ -3,14 +3,45 @@ import {
 	canOpenWorkspaceBesideSidebar,
 	CHAT_BASELINE_WIDTH,
 	CHAT_ONLY_BP,
+	DESKTOP_SIDEBAR_CONTENT_WIDTH,
+	DESKTOP_SIDEBAR_EXPANDED_MIN_WIDTH,
+	DESKTOP_SIDEBAR_RAIL_WIDTH,
+	DESKTOP_SIDEBAR_WIDTH,
 	fitPanelLayout,
 	getMaximumWorkspaceWidth,
+	getSidebarLayoutWidth,
 	resolveWorkspaceModeForViewport,
 	SIDEBAR_WIDTH,
 	WORKSPACE_QUARTER_MIN_WIDTH,
 } from "./app-layout.js";
 
 describe("fitPanelLayout", () => {
+	it("keeps the browser sidebar dimensions and gives Electron a persistent rail", () => {
+		expect(getSidebarLayoutWidth(false)).toBe(SIDEBAR_WIDTH);
+		expect(getSidebarLayoutWidth(true)).toBe(0);
+		expect(getSidebarLayoutWidth(false, true)).toBe(DESKTOP_SIDEBAR_RAIL_WIDTH + DESKTOP_SIDEBAR_CONTENT_WIDTH);
+		expect(getSidebarLayoutWidth(true, true)).toBe(DESKTOP_SIDEBAR_RAIL_WIDTH);
+		expect(DESKTOP_SIDEBAR_WIDTH).toBe(298);
+		expect(DESKTOP_SIDEBAR_EXPANDED_MIN_WIDTH).toBe(CHAT_BASELINE_WIDTH + DESKTOP_SIDEBAR_WIDTH);
+	});
+
+	it("fits desktop workspace splits around the rail and collapsible Chat panel", () => {
+		expect(getMaximumWorkspaceWidth(1_200, true, "quarter", true)).toBe(348);
+		expect(fitPanelLayout(1_150, false, "half", 560, true)).toEqual({
+			sidebarCollapsed: true,
+			workspaceMode: "quarter",
+			workspaceWidth: 298,
+		});
+		expect(fitPanelLayout(1_091, false, "quarter", 300, true)).toBeNull();
+		expect(fitPanelLayout(1_092, true, "quarter", 300, true)).toEqual({
+			sidebarCollapsed: true,
+			workspaceMode: "quarter",
+			workspaceWidth: 240,
+		});
+		expect(canOpenWorkspaceBesideSidebar(CHAT_BASELINE_WIDTH + DESKTOP_SIDEBAR_WIDTH + 239, 300, true)).toBe(false);
+		expect(canOpenWorkspaceBesideSidebar(CHAT_BASELINE_WIDTH + DESKTOP_SIDEBAR_WIDTH + 240, 300, true)).toBe(true);
+	});
+
 	it("limits resize previews to the space the current layout can actually use", () => {
 		expect(getMaximumWorkspaceWidth(1_140, true, "quarter")).toBe(340);
 		expect(getMaximumWorkspaceWidth(1_700, false, "half")).toBe(636);
