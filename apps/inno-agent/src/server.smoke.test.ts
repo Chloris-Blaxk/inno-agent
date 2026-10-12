@@ -533,10 +533,36 @@ describe("server smoke", () => {
 		expect(res.status).toBe(400);
 	});
 
-	it("unknown /api/ route returns a JSON 404 (not the SPA index.html)", async () => {
-		const res = await api("/api/definitely-not-a-route");
+	it.each([
+		["GET", "/api/definitely-not-a-route"],
+		["POST", "/api/definitely-not-a-route"],
+		["HEAD", "/api/definitely-not-a-route"],
+		["GET", "/api/definitely-not-a-route?query=1"],
+		["GET", "/api/jobs/unknown/deeper"],
+		["GET", "/api/sessions/missing.jsonl/unknown"],
+		["GET", "/api/skill-library-extra"],
+		["GET", "/api/jobs?query=1"],
+		["GET", "/api"],
+	])("unknown %s %s returns a JSON 404 (not the SPA index.html)", async (method, path) => {
+		const res = await fetch(`http://127.0.0.1:${port}${path}`, { method });
 		expect(res.status).toBe(404);
 		expect(res.headers.get("content-type")).toContain("application/json");
+		if (method !== "HEAD") expect(await res.json()).toEqual({ error: "Not found" });
+	});
+
+	it.each([
+		["GET", "/api/sessions/%"],
+		["PATCH", "/api/jobs/%GG"],
+		["GET", "/api/skills/%E0%A4%A/content"],
+		["PATCH", "/api/mcp/servers/%C3%28"],
+		["GET", "/api/chat/status/%"],
+		["GET", "/api/sessions/%/workspace"],
+		["DELETE", "/api/workspaces/%F4%90%80%80"],
+	])("%s %s returns the matchRoute HttpError as JSON 400", async (method, path) => {
+		const res = await fetch(`http://127.0.0.1:${port}${path}`, { method });
+		expect(res.status).toBe(400);
+		expect(await res.json()).toEqual({ error: "Malformed URL encoding" });
+		expect((await api("/health")).status).toBe(200);
 	});
 
 	it("missing hashed frontend assets return 404 instead of the SPA index", async () => {

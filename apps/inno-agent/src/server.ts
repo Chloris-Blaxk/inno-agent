@@ -39,6 +39,7 @@ import { CheckInStore } from "./checkins/check-in-store.js";
 import { seedManagedMcpConfig } from "./mcp/mcp-config-store.js";
 import { CronScheduler } from "./scheduler/cron-scheduler.js";
 import { HttpError, json } from "./server/http-helpers.js";
+import { createRouteDispatcher } from "./server/route-dispatch.js";
 import {
 	safeJoinReal,
 	slugifySkillName,
@@ -1495,6 +1496,115 @@ async function runQueueOpWithTimeout<T>(
 	}
 }
 
+const { dispatch: dispatchRoutes } = createRouteDispatcher({
+	// --- Check-ins API ---
+	checkins: (req, res, method, url) => handleCheckInsRoutes(req, res, method, url, { checkInStore }),
+
+	// --- Jobs CRUD (extracted to server/routes/jobs.ts) ---
+	jobs: (req, res, method, url) => handleJobsRoutes(req, res, method, url, {
+		jobStore,
+		channelRegistry,
+		checkInStore,
+		resolveSessionPath: (sessionId) => {
+			const sessionPath = sessionFileFromId(paths.sessionDir, sessionId);
+			return sessionPath && existsSync(sessionPath) ? sessionPath : null;
+		},
+		recordJobRunSession,
+		abortJobRun: async (sessionId) => {
+			const sessionPath = sessionFileFromId(paths.sessionDir, sessionId);
+			if (!sessionPath || !existsSync(sessionPath)) return false;
+			return abortJobPromptInSession(sessionPath);
+		},
+	}),
+
+	// --- Channels + bridge (extracted to server/routes/channels.ts) ---
+	channels: (req, res, method, url) => handleChannelsRoutes(req, res, method, url, {
+		channelRegistry,
+		dataDir,
+		configPath: paths.configPath,
+		getConfig: () => config,
+		setConfig: (next) => { config = next; },
+		getDispatcher: () => dispatcher,
+		getBridgeToken: () => bridgeToken,
+		reloadFeishuChannel,
+		getWechatChannel: () => wechatChannel,
+		setWechatChannel: (channel) => { wechatChannel = channel; },
+	}),
+
+	// --- Skills API ---
+	skills: (req, res, method, url) => handleSkillsRoutes(req, res, method, url, {
+		skillsDir,
+		scheduleSkillsReload,
+		listProjectSkills,
+		setSkillEnabled,
+		installSkillZip,
+		installSkillMarkdown,
+		listSkillLibrary,
+		importSkillFromLibrary,
+	}),
+
+	// --- Sessions API (extracted to server/routes/sessions.ts) ---
+	sessions: (req, res, method, url) => handleSessionsRoutes(req, res, method, url, {
+		workspaceRegistry, dataDir, paths, getContentSource,
+		getCachedPresetAvailability: (presetId) => contentHubCatalog.getCachedPresetAvailability(presetId),
+		parseSessionFile, sessionRevision,
+		readSessionChannelMetadata, sessionChannelMetadataPath,
+		readSessionTopicMetadata, sessionTopicMetadataPath, writeSessionTopic,
+		readSessionQuestionMetadata, writeSessionQuestionMetadata,
+		recordCurrentSessionChannel, generateSessionTopic,
+		sessionFileFromId, releaseQueueFromQuestionBlockedTurn, runQueueOpWithTimeout,
+	}),
+
+	// --- Wiki + L2 raw upload API (extracted to server/routes/wiki.ts) ---
+	wiki: (req, res, method, url) => handleWikiRoutes(req, res, method, url, { l2DataDir }),
+
+	// --- Learner profile API (extracted to server/routes/learner.ts) ---
+	learner: (req, res, method, url) => handleLearnerRoutes(req, res, method, url, { paths }),
+
+	// --- Workspace API + registry + session binding (extracted to server/routes/workspaces.ts) ---
+	workspaces: (req, res, method, url) => handleWorkspacesRoutes(req, res, method, url, {
+		workspaceRegistry, dataDir, paths,
+		installSkillZip, installSkillMarkdown, scheduleSkillsReload, importWorkspaceZip,
+		sessionFileFromId,
+		releaseQueueFromQuestionBlockedTurn, runQueueOpWithTimeout,
+	}),
+
+	// --- Presets API (extracted to server/routes/presets.ts) ---
+	presets: (req, res, method, url) => handlePresetsRoutes(req, res, method, url, { paths, listPresetLibrary }),
+
+	// --- Terminal sessions + Runs (extracted to server/routes/practice.ts) ---
+	practice: (req, res, method, url) => handlePracticeRoutes(req, res, method, url, {
+		workspaceRegistry, l2DataDir, terminalManager, runRecordStore,
+	}),
+
+	// --- Settings + MCP API (extracted to server/routes/settings.ts) ---
+	settings: (req, res, method, url) => handleSettingsRoutes(req, res, method, url, {
+		paths,
+		getConfig: () => config,
+		setConfig: (next) => { config = next; },
+		reloadFeishuChannel,
+		scheduleSkillsReload,
+		invalidateContentSource,
+	}),
+
+	// --- Slash commands API (extracted to server/routes/commands.ts) ---
+	commands: (req, res, method, url) => handleCommandsRoutes(req, res, method, url),
+
+	// --- Btw side-question API (extracted to server/routes/btw.ts) ---
+	btw: (req, res, method, url) => handleBtwRoutes(req, res, method, url, {
+		dataDir, sessionFileFromId, parseSessionFile,
+	}),
+
+	// --- Chat API (extracted to server/routes/chat.ts) ---
+	chat: (req, res, method, url) => handleChatRoutes(req, res, method, url, {
+		workspaceRegistry, dataDir, paths,
+		sessionFileFromId, releaseQueueFromQuestionBlockedTurn,
+		readSessionQuestionMetadata, writeSessionQuestionMetadata,
+		recordCurrentSessionChannel, maybeAutoGenerateTopic,
+		parseSessionFile, sessionRevision,
+	}),
+});
+
 const server = createServer(async (req, res) => {
 	const url = req.url ?? "/";
 	const method = req.method ?? "GET";
@@ -1514,112 +1624,7 @@ const server = createServer(async (req, res) => {
 			await ensureBootstrapped();
 		}
 
-		// --- Check-ins API ---
-		if (await handleCheckInsRoutes(req, res, method, url, { checkInStore })) return;
-
-		// --- Jobs CRUD (extracted to server/routes/jobs.ts) ---
-		if (await handleJobsRoutes(req, res, method, url, {
-			jobStore,
-			channelRegistry,
-			checkInStore,
-			resolveSessionPath: (sessionId) => {
-				const sessionPath = sessionFileFromId(paths.sessionDir, sessionId);
-				return sessionPath && existsSync(sessionPath) ? sessionPath : null;
-			},
-			recordJobRunSession,
-			abortJobRun: async (sessionId) => {
-				const sessionPath = sessionFileFromId(paths.sessionDir, sessionId);
-				if (!sessionPath || !existsSync(sessionPath)) return false;
-				return abortJobPromptInSession(sessionPath);
-			},
-		})) return;
-
-		// --- Channels + bridge (extracted to server/routes/channels.ts) ---
-		if (await handleChannelsRoutes(req, res, method, url, {
-			channelRegistry,
-			dataDir,
-			configPath: paths.configPath,
-			getConfig: () => config,
-			setConfig: (next) => { config = next; },
-			getDispatcher: () => dispatcher,
-			getBridgeToken: () => bridgeToken,
-			reloadFeishuChannel,
-			getWechatChannel: () => wechatChannel,
-			setWechatChannel: (channel) => { wechatChannel = channel; },
-		})) return;
-
-		// --- Skills API ---
-		if (await handleSkillsRoutes(req, res, method, url, {
-			skillsDir,
-			scheduleSkillsReload,
-			listProjectSkills,
-			setSkillEnabled,
-			installSkillZip,
-			installSkillMarkdown,
-			listSkillLibrary,
-			importSkillFromLibrary,
-		})) return;
-
-		// --- Sessions API (extracted to server/routes/sessions.ts) ---
-		if (await handleSessionsRoutes(req, res, method, url, {
-			workspaceRegistry, dataDir, paths, getContentSource,
-			getCachedPresetAvailability: (presetId) => contentHubCatalog.getCachedPresetAvailability(presetId),
-			parseSessionFile, sessionRevision,
-			readSessionChannelMetadata, sessionChannelMetadataPath,
-			readSessionTopicMetadata, sessionTopicMetadataPath, writeSessionTopic,
-			readSessionQuestionMetadata, writeSessionQuestionMetadata,
-			recordCurrentSessionChannel, generateSessionTopic,
-			sessionFileFromId, releaseQueueFromQuestionBlockedTurn, runQueueOpWithTimeout,
-		})) return;
-
-		// --- Wiki + L2 raw upload API (extracted to server/routes/wiki.ts) ---
-		if (await handleWikiRoutes(req, res, method, url, { l2DataDir })) return;
-
-		// --- Learner profile API (extracted to server/routes/learner.ts) ---
-		if (await handleLearnerRoutes(req, res, method, url, { paths })) return;
-
-		// --- Workspace API + registry + session binding (extracted to server/routes/workspaces.ts) ---
-		if (await handleWorkspacesRoutes(req, res, method, url, {
-			workspaceRegistry, dataDir, paths,
-			installSkillZip, installSkillMarkdown, scheduleSkillsReload, importWorkspaceZip,
-			sessionFileFromId,
-			releaseQueueFromQuestionBlockedTurn, runQueueOpWithTimeout,
-		})) return;
-
-		// --- Presets API (extracted to server/routes/presets.ts) ---
-		if (await handlePresetsRoutes(req, res, method, url, { paths, listPresetLibrary })) return;
-
-		// --- Terminal sessions + Runs (extracted to server/routes/practice.ts) ---
-		if (await handlePracticeRoutes(req, res, method, url, {
-			workspaceRegistry, l2DataDir, terminalManager, runRecordStore,
-		})) return;
-
-		// --- Settings + MCP API (extracted to server/routes/settings.ts) ---
-		if (await handleSettingsRoutes(req, res, method, url, {
-			paths,
-			getConfig: () => config,
-			setConfig: (next) => { config = next; },
-			reloadFeishuChannel,
-			scheduleSkillsReload,
-			invalidateContentSource,
-		})) return;
-
-		// --- Slash commands API (extracted to server/routes/commands.ts) ---
-		if (await handleCommandsRoutes(req, res, method, url)) return;
-
-		// --- Btw side-question API (extracted to server/routes/btw.ts) ---
-		if (await handleBtwRoutes(req, res, method, url, {
-			dataDir, sessionFileFromId, parseSessionFile,
-		})) return;
-
-		// --- Chat API (extracted to server/routes/chat.ts) ---
-		if (await handleChatRoutes(req, res, method, url, {
-			workspaceRegistry, dataDir, paths,
-			sessionFileFromId, releaseQueueFromQuestionBlockedTurn,
-			readSessionQuestionMetadata, writeSessionQuestionMetadata,
-			recordCurrentSessionChannel, maybeAutoGenerateTopic,
-			parseSessionFile, sessionRevision,
-		})) return;
+		if (await dispatchRoutes(req, res, method, url)) return;
 
 		// --- Static files / SPA fallback ---
 		if (method === "GET" || method === "HEAD") {
