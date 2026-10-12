@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { request as httpRequest } from "node:http";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { createServer as createHttpServer, request as httpRequest, type Server } from "node:http";
 import { createServer, type AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  * server.ts is a side-effect-only entry point (no exports), so these tests
  * spawn it as a child process against a throwaway --home with a dummy
  * provider, then assert status codes / redaction on a handful of endpoints.
- * No LLM calls are made.
+ * No external LLM calls are made; streaming tests use a local provider stub.
  */
 
 const SERVER_ENTRY = resolve(import.meta.dirname, "server.ts");
@@ -26,6 +26,18 @@ let workspace: string;
 let port: number;
 let child: ChildProcess;
 let childLog = "";
+let providerServer: Server;
+let providerRequests = 0;
+
+function requestLogs(requestId: string): Array<Record<string, unknown>> {
+	const dir = join(home, "data", "log");
+	if (!existsSync(dir)) return [];
+	return readdirSync(dir)
+		.filter((name) => /^server-.*\.log$/.test(name))
+		.flatMap((name) => readFileSync(join(dir, name), "utf-8").split("\n").slice(0, -1))
+		.map((line) => JSON.parse(line) as Record<string, unknown>)
+		.filter((entry) => entry.requestId === requestId);
+}
 
 async function getFreePort(): Promise<number> {
 	return new Promise((resolvePort, reject) => {
@@ -45,6 +57,18 @@ function api(path: string): Promise<Response> {
 beforeAll(async () => {
 	home = mkdtempSync(join(tmpdir(), "inno-smoke-home-"));
 	workspace = mkdtempSync(join(tmpdir(), "inno-smoke-ws-"));
+	providerServer = createHttpServer((req, res) => {
+		providerRequests += 1;
+		req.resume();
+		res.writeHead(200, { "Content-Type": "text/event-stream" });
+		// Keep a real chat stream pending until the test cancels its turn.
+		res.write(`data: ${JSON.stringify({
+			id: "smoke-stream", object: "chat.completion.chunk", created: 0, model: "dummy-model",
+			choices: [{ index: 0, delta: { role: "assistant", content: "pending" }, finish_reason: null }],
+		})}\n\n`);
+	});
+	await new Promise<void>((resolveReady) => providerServer.listen(0, "127.0.0.1", resolveReady));
+	const providerPort = (providerServer.address() as AddressInfo).port;
 	mkdirSync(join(home, "config"), { recursive: true });
 	writeFileSync(
 		join(home, "config", "config.json"),
@@ -53,7 +77,7 @@ beforeAll(async () => {
 			defaultModel: "dummy-model",
 			providers: {
 				dummy: {
-					baseUrl: "http://127.0.0.1:9", // nothing listens here; no LLM call is made
+					baseUrl: `http://127.0.0.1:${providerPort}`,
 					apiKey: DUMMY_API_KEY,
 					api: "openai-completions",
 					models: [{ id: "dummy-model" }],
@@ -63,11 +87,24 @@ beforeAll(async () => {
 		"utf-8",
 	);
 
+	// Emit a synthetic response error only for an explicitly marked request.
+	// This tests the defensive listener, not a client-disconnect crash claim.
+	const errorHook = join(home, "response-error-hook.mjs");
+	writeFileSync(errorHook, `
+import { ServerResponse } from "node:http";
+const end = ServerResponse.prototype.end;
+ServerResponse.prototype.end = function (...args) {
+	if (this.req.headers["x-test-response-error"] === "1") {
+		this.emit("error", new Error("synthetic response error"));
+	}
+	return end.apply(this, args);
+};
+`);
 	port = await getFreePort();
 	child = spawn(
 		process.execPath,
-		["--import", "tsx", SERVER_ENTRY, "--home", home, "--data-dir", join(home, "data"), "--workspace", workspace, "--port", String(port)],
-		{ cwd: REPO_ROOT, stdio: ["ignore", "pipe", "pipe"] },
+		["--import", errorHook, "--import", "tsx", SERVER_ENTRY, "--home", home, "--data-dir", join(home, "data"), "--workspace", workspace, "--port", String(port)],
+		{ cwd: REPO_ROOT, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, LOG_LEVEL: "debug" } },
 	);
 	child.stdout?.on("data", (chunk) => (childLog += chunk));
 	child.stderr?.on("data", (chunk) => (childLog += chunk));
@@ -112,6 +149,10 @@ afterAll(async () => {
 				resolveDone();
 			});
 		});
+	}
+	if (providerServer) {
+		providerServer.closeAllConnections();
+		await new Promise<void>((resolveDone) => providerServer.close(() => resolveDone()));
 	}
 	rmSync(home, { recursive: true, force: true });
 	rmSync(workspace, { recursive: true, force: true });
@@ -647,4 +688,86 @@ describe("server smoke", () => {
 		});
 		expect(status).toBe(413);
 	});
+
+	const seenRequestIds = new Set<string>();
+	it.each([
+		["/health", 200, 20],
+		["/api/health", 200, 20],
+		["/api/jobs", 200, 30],
+		["/api/request-logging-missing?request-log-secret=do-not-log", 404, 30],
+		["/assets/request-logging-missing.js", 404, 20],
+		["/%ZZ", 500, 20],
+	] as const)("correlates %s with exactly one access log at the expected level", async (path, statusCode, level) => {
+		const res = await fetch(`http://127.0.0.1:${port}${path}`, { headers: { "x-request-id": "client-supplied-id" } });
+		expect(res.status).toBe(statusCode);
+		const requestId = res.headers.get("x-request-id") ?? "";
+		expect(requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+		expect(seenRequestIds.has(requestId)).toBe(false);
+		seenRequestIds.add(requestId);
+		await res.arrayBuffer();
+		await expect.poll(() => requestLogs(requestId).filter((entry) => entry.msg === "HTTP request")).toHaveLength(1);
+		// A following completed request also lets the preceding normal close fire.
+		await (await api("/health")).arrayBuffer();
+		const logs = requestLogs(requestId);
+		const access = logs.filter((entry) => entry.msg === "HTTP request");
+		expect(access).toHaveLength(1);
+		expect(access[0]).toMatchObject({
+			level, method: "GET", path: path.split("?")[0], statusCode, requestId,
+			durationMs: expect.any(Number), outcome: "finished",
+		});
+		expect(access[0].durationMs).toBeGreaterThanOrEqual(0);
+		expect(JSON.stringify(logs)).not.toContain("request-log-secret");
+		if (statusCode === 500) {
+			expect(logs.filter((entry) => entry.msg === "unhandled error in HTTP handler")).toMatchObject([{ level: 50, requestId }]);
+		}
+	});
+
+	it("logs a synthetic response error at debug and still completes the response", async () => {
+		const res = await fetch(`http://127.0.0.1:${port}/health`, { headers: { "x-test-response-error": "1" } });
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({ status: "ok" });
+		const requestId = res.headers.get("x-request-id") ?? "";
+		await expect.poll(() => requestLogs(requestId)).toHaveLength(2);
+		expect(requestLogs(requestId)).toMatchObject([
+			{ level: 20, requestId, msg: "HTTP response stream error", err: { message: "synthetic response error" } },
+			{ level: 20, requestId, msg: "HTTP request", statusCode: 200, outcome: "finished" },
+		]);
+	});
+
+	it("logs a disconnected SSE once, including after the server finishes the turn", async () => {
+		const created = await fetch(`http://127.0.0.1:${port}/api/sessions`, { method: "POST", body: "{}" });
+		expect(created.status).toBe(201);
+		const { id: sessionId } = await created.json() as { id: string };
+		const controller = new AbortController();
+		const previousProviderRequests = providerRequests;
+		let turnId: string | undefined;
+		try {
+			const res = await fetch(`http://127.0.0.1:${port}/api/chat/stream`, {
+				method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
+				body: JSON.stringify({ sessionId, clientRequestId: "request-logging-smoke", prompt: "Stay pending for the SSE disconnect test." }),
+			});
+			expect(res.status).toBe(200);
+			expect(res.headers.get("content-type")).toBe("text/event-stream");
+			const requestId = res.headers.get("x-request-id") ?? "";
+			expect(requestId).not.toBe("");
+			expect((await res.body!.getReader().read()).done).toBe(false);
+			await expect.poll(() => providerRequests).toBeGreaterThan(previousProviderRequests);
+			const state = await (await api(`/api/chat/status/${sessionId}`)).json() as { stream: { turnId: string } };
+			turnId = state.stream.turnId;
+			expect(requestLogs(requestId)).toHaveLength(0);
+			controller.abort();
+			await expect.poll(() => requestLogs(requestId)).toHaveLength(1);
+			expect(requestLogs(requestId)[0]).toMatchObject({
+				level: 30, method: "POST", path: "/api/chat/stream", statusCode: 200, requestId,
+				durationMs: expect.any(Number), outcome: "disconnected", msg: "HTTP request",
+			});
+			const stopped = await fetch(`http://127.0.0.1:${port}/api/chat/${sessionId}/${turnId}/abort`, { method: "POST" });
+			expect(stopped.status).toBe(202);
+			await stopped.arrayBuffer();
+			expect(requestLogs(requestId)).toHaveLength(1);
+		} finally {
+			controller.abort();
+			if (turnId) await fetch(`http://127.0.0.1:${port}/api/chat/${sessionId}/${turnId}/abort`, { method: "POST" });
+		}
+	}, 30_000);
 });
