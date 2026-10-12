@@ -107,8 +107,8 @@ export function matchRoute(
 		if (patternParts[i].startsWith(":")) {
 			try {
 				params[patternParts[i].slice(1)] = decodeURIComponent(urlParts[i]);
-			} catch (err) {
-				params[patternParts[i].slice(1)] = urlParts[i];
+			} catch {
+				throw new HttpError(400, "Malformed URL encoding");
 			}
 		} else if (patternParts[i] !== urlParts[i]) {
 			return null;
