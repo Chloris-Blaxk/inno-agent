@@ -22,8 +22,58 @@ export interface ProcessFallbackOptions {
 	exitTimeoutMs?: number;
 }
 
+export interface GracefulShutdownOptions {
+	server: { close(callback: () => void): unknown };
+	wss: {
+		clients: Iterable<{ close(code: number, reason: string): void }>;
+		close(callback: () => void): unknown;
+	};
+	exit: (code: number) => void;
+	exitTimeoutMs?: number;
+}
+
 let installed = false;
-let shuttingDown = false;
+// Fatal faults and signals must claim the same state so neither can start a
+// second cleanup while the other path is already shutting down.
+const shutdownState = { shuttingDown: false };
+
+export function createGracefulShutdownHandler(
+	options: GracefulShutdownOptions,
+	state = shutdownState,
+): () => void {
+	return () => {
+		if (state.shuttingDown) {
+			options.exit(0);
+			return;
+		}
+		state.shuttingDown = true;
+
+		// SSE can keep server.close() pending forever. Leave two seconds before
+		// Docker's default ten-second stop deadline rather than waiting for it.
+		const forceExit = setTimeout(() => options.exit(0), options.exitTimeoutMs ?? 8_000);
+		forceExit.unref();
+
+		// ws 8.x does not close clients in noServer mode: send the going-away
+		// frame explicitly before closing the servers, avoiding WS 1006 on exit.
+		for (const ws of options.wss.clients) {
+			try { ws.close(1001, "Server shutting down"); } catch { /* best effort */ }
+		}
+
+		void Promise.all([
+			new Promise<void>((resolveClose) => {
+				try { options.server.close(resolveClose); } catch { resolveClose(); }
+			}),
+			new Promise<void>((resolveClose) => {
+				try { options.wss.close(resolveClose); } catch { resolveClose(); }
+			}),
+		]).then(() => {
+			// HTTP close does not wait for upgraded sockets; let the WS close
+			// handshakes finish too before exiting, unless the deadline wins.
+			clearTimeout(forceExit);
+			options.exit(0);
+		});
+	};
+}
 
 export function installProcessFallbacks(options: ProcessFallbackOptions = {}): void {
 	if (installed) return;
@@ -32,10 +82,10 @@ export function installProcessFallbacks(options: ProcessFallbackOptions = {}): v
 	const fatal = (kind: string, err: unknown): void => {
 		// A second fault while shutting down (e.g. cleanup throws, or another
 		// rejection lands) must not recurse — exit immediately.
-		if (shuttingDown) {
+		if (shutdownState.shuttingDown) {
 			process.exit(1);
 		}
-		shuttingDown = true;
+		shutdownState.shuttingDown = true;
 
 		logger.fatal({ err }, `[inno] ${kind} — shutting down`);
 
