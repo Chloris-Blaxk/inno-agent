@@ -3,6 +3,7 @@
 import "source-map-support/register.js";
 
 import { createServer, type IncomingMessage as HttpReq, type ServerResponse } from "node:http";
+import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -1495,9 +1496,35 @@ async function runQueueOpWithTimeout<T>(
 	}
 }
 
-const server = createServer(async (req, res) => {
+const requestIdSymbol = Symbol("requestId");
+const server = createServer(async (req, response) => {
+	const startedAt = performance.now();
+	const requestId = randomUUID();
+	const res = Object.assign(response, { [requestIdSymbol]: requestId });
+	res.setHeader("x-request-id", requestId);
 	const url = req.url ?? "/";
 	const method = req.method ?? "GET";
+	const path = url.split("?", 1)[0];
+	const logLevel = path.startsWith("/api/") && path !== "/api/health" ? "info" : "debug";
+
+	// Defensive only: response stream errors must have a listener.
+	res.once("error", (err) => logger.debug({ err, requestId }, "HTTP response stream error"));
+	let accessLogged = false;
+	const logAccess = () => {
+		// Normal responses emit close after finish; disconnected SSE may only emit close.
+		if (accessLogged) return;
+		accessLogged = true;
+		logger[logLevel]({
+			method,
+			path,
+			statusCode: res.statusCode,
+			durationMs: Math.round(performance.now() - startedAt),
+			requestId,
+			outcome: res.writableFinished ? "finished" : "disconnected",
+		}, "HTTP request");
+	};
+	res.once("finish", logAccess);
+	res.once("close", logAccess);
 
 	try {
 		// --- Health check (no bootstrap needed) ---
@@ -1642,7 +1669,7 @@ const server = createServer(async (req, res) => {
 		// --- 404 ---
 		json(res, 404, { error: "Not found" });
 	} catch (err) {
-		logger.error({ err }, "unhandled error in HTTP handler");
+		logger.error({ err, requestId }, "unhandled error in HTTP handler");
 		// SSE/streaming responses have already sent headers — calling json()
 		// here would throw ERR_HTTP_HEADERS_SENT from inside this catch block
 		// and kill the process. The only safe move is to end the stream.
