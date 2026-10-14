@@ -3,10 +3,11 @@
 import { EnvHttpProxyAgent, setGlobalDispatcher } from "undici";
 import { installFetchLogger } from "./utils/fetch-logger.js";
 import { main, type ExtensionFactory } from "@earendil-works/pi-coding-agent";
-import { loadConfig } from "./config.js";
+import { isCodemodeEnabled, loadConfig } from "./config.js";
 import { applyProviderProxyBypass } from "./utils/proxy-bypass.js";
 import { createInnoExtension } from "./agent/inno-extension.js";
 import { createMcpStatusExtension, loadMcpAdapterExtension } from "./agent/mcp-extension.js";
+import { syncCodemodeDefaultTools } from "./agent/pi-runner.js";
 import { ensureDir } from "./storage/file-store.js";
 import { seedManagedMcpConfig } from "./mcp/mcp-config-store.js";
 import { applyRuntimeEnvironment, parseRuntimeArgs, resolveRuntimePaths } from "./runtime.js";
@@ -36,9 +37,14 @@ applyRuntimeEnvironment(paths);
 const config = loadConfig(paths.configPath);
 applyProviderProxyBypass(config);
 
-// First-run MCP template: seeds <configDir>/mcp.json with a disabled
+// First-run MCP template: seeds <configDir>/mcp-adapter.json with a disabled
 // reference server when the file doesn't exist yet. No-op afterwards.
 seedManagedMcpConfig(paths);
+
+// Codemode activation: in CLI mode main() auto-registers the built-in
+// codemode extension; the settings.json defaultTools entry decides whether
+// the tool starts active. Kept in sync with plugins.codemode.enabled.
+syncCodemodeDefaultTools(paths.configDir, isCodemodeEnabled(config));
 
 // Ensure data directories exist
 ensureDir(paths.learnerDataDir);

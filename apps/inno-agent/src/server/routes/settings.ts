@@ -10,6 +10,7 @@ import {
 import {
 	deleteModel,
 	deleteProvider,
+	isCodemodeEnabled,
 	isComputerUseEnabled,
 	normalizeContentHubConfig,
 	normalizeSmartInputConfig,
@@ -139,6 +140,12 @@ function buildSafeSettings(config: InnoConfig) {
 			enabled: isComputerUseEnabled(config),
 			explicit: config.plugins?.computerUse?.enabled ?? null,
 			isDesktop: process.env.INNO_DESKTOP === "1",
+		},
+		// Codemode toggle state for the settings UI. Like computer use, the
+		// change only takes effect on server restart (the extension registers
+		// at session init and defaultTools syncs at bootstrap).
+		codemode: {
+			enabled: isCodemodeEnabled(config),
 		},
 	};
 }
@@ -443,6 +450,22 @@ export async function handleSettingsRoutes(
 		return true;
 	}
 
+	// --- Codemode toggle. Persists plugins.codemode.enabled. Same restart
+	// semantics as computer use: the extension registers at session init and
+	// the defaultTools activation entry syncs at bootstrap. ---
+	if (method === "PUT" && url === "/api/settings/codemode") {
+		const body = (await readBody(req)) as Record<string, unknown>;
+		if (typeof body.enabled !== "boolean") {
+			json(res, 400, { error: "enabled must be a boolean" });
+			return true;
+		}
+		config.plugins = { ...config.plugins, codemode: { enabled: body.enabled } };
+		save(saveConfig(paths.configPath, config));
+		syncConfig(config);
+		json(res, 200, buildSafeSettings(config));
+		return true;
+	}
+
 	// --- Permission policy mode (default / auto / yolo). Rewrites the plugin's
 	// config file from the managed template, then triggers a resources reload —
 	// the plugin re-reads its config on resources_discover, so the switch takes
@@ -505,7 +528,7 @@ export async function handleSettingsRoutes(
 		return true;
 	}
 
-	// --- MCP server management (managed file: <configDir>/mcp.json) ---
+	// --- MCP server management (managed file: <configDir>/mcp-adapter.json) ---
 	if (method === "GET" && url === "/api/mcp") {
 		json(res, 200, getMcpOverview(config, paths));
 		return true;

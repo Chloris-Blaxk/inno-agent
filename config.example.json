@@ -75,6 +75,7 @@
 	},
 	"plugins": {
 		"todo": { "enabled": true },
-		"webAccess": { "enabled": true }
+		"webAccess": { "enabled": true },
+		"codemode": { "enabled": false }
 	}
 }

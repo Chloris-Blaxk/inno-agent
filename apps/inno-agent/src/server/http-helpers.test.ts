@@ -1,7 +1,7 @@
 import { PassThrough } from "node:stream";
 import type { IncomingMessage as HttpReq } from "node:http";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_MAX_BODY_BYTES, HttpError, readBody } from "./http-helpers.js";
+import { DEFAULT_MAX_BODY_BYTES, HttpError, matchRoute, readBody } from "./http-helpers.js";
 
 /**
  * Unit tests for the readBody size cap and HttpError plumbing
@@ -65,5 +65,30 @@ describe("readBody", () => {
 		const body = readBody(req, { maxBytes: 16 });
 		req.end(JSON.stringify({ payload: "this is definitely longer than sixteen bytes" }));
 		await expectHttpError(body, 413);
+	});
+});
+
+describe("matchRoute", () => {
+	it("decodes parameters and ignores the query string", () => {
+		expect(matchRoute("GET", "GET", "/api/sessions/hello%20world%2F%25%3F?ignored=%", "/api/sessions/:id"))
+			.toEqual({ id: "hello world/%?" });
+	});
+
+	it.each(["%", "%GG", "%E0%A4%A", "%C3%28", "%ED%A0%80", "%F4%90%80%80"])(
+		"rejects malformed parameter encoding %s with HttpError 400",
+		(encoded) => {
+			const match = () => matchRoute("GET", "GET", `/api/sessions/${encoded}`, "/api/sessions/:id");
+			expect(match).toThrowError(HttpError);
+			expect(match).toThrowError(expect.objectContaining({
+				statusCode: 400,
+				message: "Malformed URL encoding",
+			}));
+		},
+	);
+
+	it("returns null before decoding unrelated methods, lengths, or literal prefixes", () => {
+		expect(matchRoute("GET", "POST", "/api/sessions/%", "/api/sessions/:id")).toBeNull();
+		expect(matchRoute("GET", "GET", "/api/sessions/%/extra", "/api/sessions/:id")).toBeNull();
+		expect(matchRoute("GET", "GET", "/api/jobs/%", "/api/sessions/:id")).toBeNull();
 	});
 });

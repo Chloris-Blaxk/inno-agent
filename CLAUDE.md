@@ -19,7 +19,7 @@ PI SDK packages (`@earendil-works/pi-ai`, `@earendil-works/pi-coding-agent`, `@e
 
 Key dependencies: `ws` (WebSocket), `node-pty` (PTY terminal), `cron-parser` (scheduler), `@larksuiteoapi/node-sdk` (Feishu), `typebox` (validation), `undici` (HTTP client), `@juicesharp/rpiv-ask-user-question` (bridges agent `ask_user_question` tool calls to the web UI), `@juicesharp/rpiv-todo` (`todo` task-list tool), `pi-web-access` (`fetch_content`/`get_search_content` URL/GitHub/PDF/YouTube extraction), `pi-subagents` (optional subagent support), `pi-sandbox` (optional OS-level sandboxing), `graphology` + `graphology-communities-louvain` (wiki knowledge graph), `yaml` (YAML parsing), `@llamaindex/liteparse` (document parsing).
 
-Tests run with `npm test` (`vitest run`, root script) and also execute in the release CI. The suite is 96 files (721 tests), including backend chat-stream/trace persistence coverage and web chat trace/timeline coverage, while remaining skewed toward `memory/l2`; coverage for channels/scheduler/terminal/L1/L3 is tracked in `docs/quality-remediation-plan.md`. The TypeScript build (`npm run build`) remains the primary sanity check. No ESLint or Prettier configuration exists.
+Tests run with `npm test` (`vitest run`, root script) and also execute in the release CI. The suite is 100 files (815 tests), including backend chat-stream/trace persistence coverage and web chat trace/timeline coverage, while remaining skewed toward `memory/l2`; coverage for channels/scheduler/terminal/L1/L3 is tracked in `docs/quality-remediation-plan.md`. The TypeScript build (`npm run build`) remains the primary sanity check. No ESLint or Prettier configuration exists.
 
 When a PR changes the test count, the size of `server.ts`, or other structural facts stated in this file, update this file in the same PR — AI agents read it as ground truth.
 
@@ -188,7 +188,7 @@ Key files in `apps/inno-agent/src/agent/`:
 - `practice-tools.ts` — Practice Lab tools (run commands, read run records).
 - `document-tools.ts` — file uploads, workspace file reading, document preview (CSV, Office formats).
 - `ocr-tools.ts` — OCR via external PaddleOCR-VL API, configured by `ocrApi` in config.json.
-- `web-access-config.ts` — integration support for the bundled `pi-web-access` plugin: writes the managed `<configDir>/web-search.json` default (renames its `web_search` to `web_research` via `toolNames` so it coexists with inno's Tavily `web_search` — PI's tool registry is silent last-wins on name collisions — and forces `workflow: "none"` so no browser curator opens; a file exactly matching the legacy search-disabled default is auto-upgraded), exposes the provider-settings read/write surface behind `GET/PUT /api/settings/web-access` (masked credentials, curated provider list), and builds the jiti alias that pins `@earendil-works/pi-ai` to the backend's 0.84.x copy (the monorepo root hoists pi-ai 0.75.x for pi-web-ui, which lacks the `./compat` export pi-web-access imports). Bundled plugins (`@juicesharp/rpiv-todo`, `pi-web-access`, `@injaneity/pi-computer-use`) ship TS-only sources and load through jiti like pi-subagents; gated by `plugins.todo.enabled` / `plugins.webAccess.enabled` / `plugins.computerUse.enabled` in config.json (todo/webAccess default on; computerUse defaults on only under the Electron desktop app via `INNO_DESKTOP=1`, off elsewhere unless explicitly enabled).
+- `web-access-config.ts` — integration support for the bundled `pi-web-access` plugin: writes the managed `<configDir>/web-search.json` default (renames its `web_search` to `web_research` via `toolNames` so it coexists with inno's Tavily `web_search` — PI's tool registry is silent last-wins on name collisions — and forces `workflow: "none"` so no browser curator opens; a file exactly matching the legacy search-disabled default is auto-upgraded), exposes the provider-settings read/write surface behind `GET/PUT /api/settings/web-access` (masked credentials, curated provider list), and builds the jiti alias that pins `@earendil-works/pi-ai` to the backend's 1.x copy (the monorepo root hoists pi-ai 0.75.x for pi-web-ui, which lacks the `./compat` export pi-web-access imports). Bundled plugins (`@juicesharp/rpiv-todo`, `pi-web-access`, `@injaneity/pi-computer-use`) ship TS-only sources and load through jiti like pi-subagents; gated by `plugins.todo.enabled` / `plugins.webAccess.enabled` / `plugins.computerUse.enabled` in config.json (todo/webAccess default on; computerUse defaults on only under the Electron desktop app via `INNO_DESKTOP=1`, off elsewhere unless explicitly enabled). `plugins.codemode.enabled` (default off, no desktop exception) activates PI's built-in `codemode` tool — model-written QuickJS scripts that batch-call the session's tools; nested calls still pass through the permission and observability pipeline. In server mode pi-runner registers `createCodemodeExtension()` (SDK mode loads no built-ins); CLI mode gets it from `main()`. Activation is managed by `syncCodemodeDefaultTools` (pi-runner.ts, also called from cli.ts), which owns the `+codemode` entry in `<configDir>/settings.json` `defaultTools`; toggled via `PUT /api/settings/codemode`, takes effect on restart.
 - `workspace-path-guard.ts` — security path validation ensuring agent file operations stay within workspace bounds.
 - `observability-extension.ts` — two-layer observability: (1) extension layer for session lifecycle/model changes/compaction events, (2) prompt observer for per-turn execution, tool call details (args + results), message lifecycle, and usage/cost extraction. All handlers are wrapped in try-catch so observability never breaks the agent loop. Uses a dedicated child logger (`logger.child({ module: "observability" })`).
 
@@ -255,7 +255,7 @@ Three layers, all file-backed under `dataDir`:
 
 ### HTTP server (`src/server.ts`)
 
-Plain Node `http.createServer` (no framework), ~1750 lines plus route domains extracted under `src/server/routes/` (chat, wiki, workspaces, skills, channels, jobs, checkins, sessions, settings, learner, practice, presets, commands, btw). Key endpoints:
+Plain Node `http.createServer` (no framework), ~1760 lines plus route domains extracted under `src/server/routes/` (chat, wiki, workspaces, skills, channels, jobs, checkins, sessions, settings, learner, practice, presets, commands, btw). Route domains are dispatched by URL prefix via `src/server/route-dispatch.ts` (a `/api/<domain>` lookup table built at startup; `/api/sessions` chains sessions → workspaces to preserve the old order). Static files are served by `src/server/static-serve.ts` (async reads, Brotli/gzip sibling negotiation, hashed-asset cache headers). Every request gets an `x-request-id` response header and a one-line access log (info for `/api/*`, debug for static/health; finish/close deduped, SSE disconnects logged as `disconnected`). SIGTERM/SIGINT trigger a graceful shutdown (`createGracefulShutdownHandler` in `src/utils/process-fallback.ts`): terminal WS clients get a 1001 close frame, servers close, forced exit after 8 s. Key endpoints:
 - `POST /api/chat/stream` — SSE streaming chat.
 - `POST /api/chat` — non-streaming chat (full response).
 - `GET /api/chat/events/:id` — SSE event replay for reconnecting to an in-progress chat stream after page navigation (backed by `SessionEventBroadcaster`, an in-memory buffer).
@@ -307,6 +307,10 @@ Handles file uploads, workspace file reading, and document preview (CSV, Office 
 ### Subagents (`pi-subagents`)
 
 Optional subagent support via `pi-subagents` package, configured with `subagents.enabled` in `config.json`. When enabled, the agent can spawn sub-agents for parallel or isolated tasks.
+
+### MCP (`pi-mcp-adapter`)
+
+Optional MCP support via `pi-mcp-adapter` (pinned, TS-source-only, jiti-loaded), gated by `mcp.enabled` in `config.json` (default off; takes effect on restart). Inno manages one canonical server file, **`<configDir>/mcp-adapter.json`** — NOT `mcp.json`: pi ≥0.99's built-in MCP extension (auto-loaded by `main()` in CLI mode) reads `<agentDir>/mcp.json`, and inno's agentDir IS configDir, so the old name would start inno's servers even when `mcp.enabled` is false. `seedManagedMcpConfig` migrates a legacy `mcp.json` on boot. `GET /api/mcp` + `PUT/DELETE /api/mcp/servers/:name` back the settings UI; the adapter publishes status snapshots on the `pi-mcp-adapter/status/v1` event channel.
 
 ### Skills loading
 
@@ -398,7 +402,8 @@ Full config.json structure (see `config.example.json`):
   "plugins": {
     "todo": { "enabled": true },
     "permissionSystem": { "enabled": true },
-    "webAccess": { "enabled": true }
+    "webAccess": { "enabled": true },
+    "codemode": { "enabled": false }
   },
   "contentHub": {
     "type": "github",

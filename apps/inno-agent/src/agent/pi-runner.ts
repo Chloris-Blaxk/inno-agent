@@ -2,6 +2,7 @@ import {
 	createAgentSessionFromServices,
 	createAgentSessionRuntime,
 	createAgentSessionServices,
+	createCodemodeExtension,
 	getAgentDir,
 	initTheme,
 	ModelRegistry,
@@ -23,6 +24,7 @@ import { createInnoExtension, expandInnoSlashCommand, INNO_SLASH_COMMAND_NAMES, 
 import { createMcpStatusExtension, loadMcpAdapterExtension } from "./mcp-extension.js";
 import { createObservabilityExtension, createPromptObserver, obsLogger } from "./observability-extension.js";
 import type { InnoConfig } from "../config.js";
+import { isCodemodeEnabled } from "../config.js";
 import type { RuntimePaths } from "../runtime.js";
 import { ensureDir } from "../storage/file-store.js";
 import type { ChannelRegistry } from "../channels/channel.js";
@@ -169,6 +171,63 @@ function enqueue<T>(task: () => Promise<T>, opts?: { signal?: AbortSignal }): Pr
  * This matches CLI's PI runtime model (runtime + services + session replacement).
  */
 /**
+ * Sync the managed `+codemode` entry in PI's settings.json `defaultTools`
+ * with the `plugins.codemode.enabled` toggle. Codemode registers its tool
+ * inactive; `defaultTools` is the activation mechanism for both entry points
+ * (server sessions resolve the loadout from SettingsManager, CLI `main()`
+ * reads the same settings.json), so this one key covers both modes.
+ *
+ * Rules:
+ * - enabled: append `+codemode` to an all-`+/-` list (or create the key);
+ *   append plain `codemode` to a plain-name list (the two forms cannot be
+ *   mixed per pi's `--tools` semantics).
+ * - disabled: remove the `+codemode`/`codemode` entries we manage; if the
+ *   list becomes empty the key is deleted. A hand-added codemode entry is
+ *   treated as managed too — this key is owned by the toggle, like the
+ *   managed permission-system template.
+ *
+ * Called from both server (initSession) and CLI (cli.ts) bootstrap, before
+ * SettingsManager is constructed.
+ */
+export function syncCodemodeDefaultTools(agentDir: string, enabled: boolean): void {
+	const settingsPath = join(agentDir, "settings.json");
+	let settings: Record<string, unknown> = {};
+	if (existsSync(settingsPath)) {
+		try {
+			settings = JSON.parse(readFileSync(settingsPath, "utf-8")) as Record<string, unknown>;
+		} catch {
+			// corrupt file — start from an empty object below
+			settings = {};
+		}
+	}
+	const current = Array.isArray(settings.defaultTools)
+		? (settings.defaultTools as unknown[]).filter((e): e is string => typeof e === "string")
+		: undefined;
+	let next: string[] | undefined;
+	if (enabled) {
+		if (current === undefined) {
+			next = ["+codemode"];
+		} else if (current.some((e) => e === "+codemode" || e === "codemode")) {
+			return; // already active — leave the file untouched
+		} else {
+			const isAdjustForm = current.every((e) => e.startsWith("+") || e.startsWith("-"));
+			next = [...current, isAdjustForm ? "+codemode" : "codemode"];
+		}
+	} else {
+		if (current === undefined) return; // nothing to remove
+		next = current.filter((e) => e !== "+codemode" && e !== "codemode");
+		if (next.length === current.length) return; // not present — untouched
+	}
+	if (next !== undefined && next.length > 0) {
+		settings.defaultTools = next;
+	} else {
+		delete settings.defaultTools;
+	}
+	writeFileSync(settingsPath, JSON.stringify(settings, null, 2), "utf-8");
+	logger.info({ enabled, path: settingsPath }, "codemode defaultTools synced");
+}
+
+/**
  * Write a default {@code retry.provider.timeoutMs} into the PI SDK settings
  * file when none is configured yet.  This gives every provider request a hard
  * deadline so that stalled LLM connections don't leak when the HTTP client
@@ -223,6 +282,13 @@ export async function initSession(
 	extensionFactories.push(createMcpStatusExtension());
 	const mcpAdapter = await loadMcpAdapterExtension(config, paths);
 	if (mcpAdapter) extensionFactories.push(mcpAdapter);
+	// Codemode (PI built-in, opt-in via plugins.codemode.enabled): in server
+	// mode the SDK loads no built-in extensions, so the factory is added
+	// here; CLI mode gets it from main()'s built-in list. Activation is
+	// handled by syncCodemodeDefaultTools via settings.json defaultTools.
+	if (isCodemodeEnabled(config)) {
+		extensionFactories.push(createCodemodeExtension());
+	}
 	if (options?.sandbox) {
 		try {
 			const { createJiti } = await import("jiti/static");
@@ -253,6 +319,10 @@ export async function initSession(
 	// precedence.
 	const DEFAULT_PROVIDER_TIMEOUT_MS = 600_000; // 10 min
 	applyDefaultProviderTimeout(agentDir, DEFAULT_PROVIDER_TIMEOUT_MS);
+
+	// Sync the codemode activation entry before SettingsManager is created so
+	// the loadout picks it up for every session (boot + replacements).
+	syncCodemodeDefaultTools(agentDir, isCodemodeEnabled(config));
 
 	// Re-create settingsManager so it picks up any defaults we just wrote.
 	const settingsManager = SettingsManager.create(cwd, agentDir);
@@ -796,7 +866,10 @@ function restoreSessionBeforeFailedPrompt(session: AgentSession, previousLeafId:
 	} else {
 		session.sessionManager.resetLeaf();
 	}
-	session.agent.state.messages = session.sessionManager.buildSessionContext().messages;
+	// pi ≥0.87: SessionManager is canonical for provider context — assigning
+	// session.agent.state.messages no longer has any effect. refreshContext()
+	// rebuilds agent state from the session manager after branch navigation.
+	session.refreshContext();
 }
 
 /**
@@ -1185,7 +1258,9 @@ export async function branchSessionBeforeUserMessage(
 			replacedEntryId: entryId,
 			editedAt: new Date().toISOString(),
 		});
-		session.agent.state.messages = manager.buildSessionContext().messages;
+		// pi ≥0.87: rebuild agent state from the session manager instead of
+		// assigning agent.state.messages (which is no longer observed).
+		session.refreshContext();
 		return { replacedEntryId: entryId, branchMarkerId };
 	}, opts);
 }

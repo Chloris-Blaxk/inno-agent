@@ -80,6 +80,13 @@ export async function saveComputerUseSettings(enabled: boolean): Promise<InnoSet
 	});
 }
 
+export async function saveCodemodeSettings(enabled: boolean): Promise<InnoSettings> {
+	return apiFetch<InnoSettings>("/api/settings/codemode", {
+		method: "PUT",
+		body: JSON.stringify({ enabled }),
+	});
+}
+
 export async function saveSmartInputSettings(payload: SmartInputSettings): Promise<InnoSettings> {
 	return apiFetch<InnoSettings>("/api/settings/smart-input", {
 		method: "PUT",

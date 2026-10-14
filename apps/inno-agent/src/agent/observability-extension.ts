@@ -191,6 +191,21 @@ export function createObservabilityExtension(): ExtensionFactory {
       }),
     );
 
+    // ---- Run settlement ---------------------------------------------------
+
+    pi.on(
+      "agent_settled",
+      safeHandler("agent_settled", (event) => {
+        // Fired once the run has fully settled (no pending retry, compaction,
+        // or queued continuation). `aborted` (pi ≥1.1) distinguishes a
+        // cancelled run from a finished one — agent_end alone cannot.
+        obsLogger.info({
+          event: "agent_settled",
+          aborted: event.aborted,
+        });
+      }),
+    );
+
     // ---- Model / thinking level -------------------------------------------
 
     pi.on(

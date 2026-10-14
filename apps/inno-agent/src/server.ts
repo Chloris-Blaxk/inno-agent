@@ -3,14 +3,14 @@
 import "source-map-support/register.js";
 
 import { createServer, type IncomingMessage as HttpReq, type ServerResponse } from "node:http";
+import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { EnvHttpProxyAgent, setGlobalDispatcher } from "undici";
 import { loadConfig, type InnoConfig } from "./config.js";
 import { installFetchLogger } from "./utils/fetch-logger.js";
-import { canonicalContainmentRoot, isWithin } from "./utils/path-safety.js";
 import { applyProviderProxyBypass } from "./utils/proxy-bypass.js";
 import { ensureDir, readJson, readText, writeJson, writeText } from "./storage/file-store.js";
 import {
@@ -39,6 +39,8 @@ import { CheckInStore } from "./checkins/check-in-store.js";
 import { seedManagedMcpConfig } from "./mcp/mcp-config-store.js";
 import { CronScheduler } from "./scheduler/cron-scheduler.js";
 import { HttpError, json } from "./server/http-helpers.js";
+import { serveStatic } from "./server/static-serve.js";
+import { createRouteDispatcher } from "./server/route-dispatch.js";
 import {
 	safeJoinReal,
 	slugifySkillName,
@@ -75,7 +77,7 @@ import {
 } from "./server/session-model.js";
 import { logger } from "./logger.js";
 import { applyRuntimeEnvironment, parseRuntimeArgs, resolveRuntimePaths } from "./runtime.js";
-import { installProcessFallbacks } from "./utils/process-fallback.js";
+import { createGracefulShutdownHandler, installProcessFallbacks } from "./utils/process-fallback.js";
 import { questionBridge } from "./agent/question-bridge.js";
 import { permissionBridge } from "./agent/permission-bridge.js";
 import { streamRegistry } from "./chat/stream-registry.js";
@@ -96,7 +98,9 @@ import { WebSocketServer, type WebSocket } from "ws";
 // timeout (retry.provider.timeoutMs, default 10 min) should fire first; this
 // ensures a hung connection can't live longer than 15 minutes even if the
 // provider timeout fails to abort.
-setGlobalDispatcher(new EnvHttpProxyAgent({ bodyTimeout: 900_000, headersTimeout: 0 }));
+// headersTimeout: keep undici's 300s default so a provider that never sends
+// response headers cannot leave the route waiting indefinitely.
+setGlobalDispatcher(new EnvHttpProxyAgent({ bodyTimeout: 900_000, headersTimeout: 300_000 }));
 installFetchLogger();
 
 const parsed = parseRuntimeArgs(process.argv.slice(2));
@@ -187,7 +191,7 @@ async function ensureBootstrapped(): Promise<void> {
 		config = loadConfig(paths.configPath);
 		applyProviderProxyBypass(config);
 
-		// First-run MCP template: seeds <configDir>/mcp.json with a disabled
+		// First-run MCP template: seeds <configDir>/mcp-adapter.json with a disabled
 		// reference server when the file doesn't exist yet. No-op afterwards.
 		seedManagedMcpConfig(paths);
 
@@ -446,105 +450,6 @@ function sessionRevision(filePath: string): string {
 // ---------------------------------------------------------------------------
 
 const webDistDir = paths.webDistDir;
-
-const MIME_TYPES: Record<string, string> = {
-	".html": "text/html; charset=utf-8",
-	".js": "application/javascript; charset=utf-8",
-	".mjs": "application/javascript; charset=utf-8",
-	".css": "text/css; charset=utf-8",
-	".json": "application/json; charset=utf-8",
-	".png": "image/png",
-	".jpg": "image/jpeg",
-	".jpeg": "image/jpeg",
-	".svg": "image/svg+xml",
-	".ico": "image/x-icon",
-	".woff": "font/woff",
-	".woff2": "font/woff2",
-};
-
-function isHashedStaticAsset(filePath: string): boolean {
-	const rel = relative(webDistDir, filePath).split(sep).join("/");
-	return /^assets\/.+-[A-Za-z0-9_-]{8,}\.[^.]+$/.test(rel);
-}
-
-function acceptEncodingHeader(req: HttpReq): string {
-	const value = req.headers["accept-encoding"];
-	return Array.isArray(value) ? value.join(",") : value ?? "";
-}
-
-function encodingAccepted(acceptEncoding: string, encoding: "br" | "gzip"): boolean {
-	let wildcardQ: number | undefined;
-	for (const part of acceptEncoding.split(",")) {
-		const [rawToken, ...params] = part.trim().split(";");
-		const token = rawToken.trim().toLowerCase();
-		if (!token) continue;
-		let q = 1;
-		for (const param of params) {
-			const [name, value] = param.trim().split("=", 2);
-			if (name?.trim().toLowerCase() !== "q") continue;
-			const parsed = Number.parseFloat(value?.trim() ?? "");
-			q = Number.isFinite(parsed) ? parsed : 0;
-			break;
-		}
-		if (token === encoding) return q > 0;
-		if (token === "*") wildcardQ = q;
-	}
-	return wildcardQ !== undefined ? wildcardQ > 0 : false;
-}
-
-function serveStatic(req: HttpReq, res: ServerResponse, filePath: string, sendBody = true, staticRoot?: string): boolean {
-	try {
-		if (!existsSync(filePath) || !statSync(filePath).isFile()) return false;
-		const ext = extname(filePath);
-		const contentType = MIME_TYPES[ext] || "application/octet-stream";
-		const acceptEncoding = acceptEncodingHeader(req);
-		let responsePath = filePath;
-		let contentEncoding: "br" | "gzip" | undefined;
-		// The pre-compressed sibling never went through safeJoinReal, so verify
-		// its realpath stays inside the static root — a planted symlink like
-		// `assets/index.js.gz -> /etc/passwd` must not be served.
-		const canonicalRoot = staticRoot ? canonicalContainmentRoot(staticRoot) : null;
-		const pickCompressedSibling = (suffix: string): string | null => {
-			const candidate = `${filePath}${suffix}`;
-			try {
-				if (!existsSync(candidate)) return null;
-				if (canonicalRoot && !isWithin(canonicalRoot, realpathSync(candidate))) return null;
-				return candidate;
-			} catch {
-				return null;
-			}
-		};
-		const brSibling = encodingAccepted(acceptEncoding, "br") ? pickCompressedSibling(".br") : null;
-		const gzSibling = !brSibling && encodingAccepted(acceptEncoding, "gzip") ? pickCompressedSibling(".gz") : null;
-		if (brSibling) {
-			responsePath = brSibling;
-			contentEncoding = "br";
-		} else if (gzSibling) {
-			responsePath = gzSibling;
-			contentEncoding = "gzip";
-		}
-
-		const content = readFileSync(responsePath);
-		const headers: Record<string, string | number> = {
-			"Content-Type": contentType,
-			"Content-Length": content.length,
-			"Cache-Control": ext === ".html"
-				? "no-cache"
-				: isHashedStaticAsset(filePath)
-					? "public, max-age=31536000, immutable"
-					: "no-cache",
-		};
-		if (contentEncoding) {
-			headers["Content-Encoding"] = contentEncoding;
-			headers.Vary = "Accept-Encoding";
-		}
-		res.writeHead(200, headers);
-		res.end(sendBody ? content : undefined);
-		return true;
-	} catch (err) {
-		return false;
-	}
-}
 
 // ---------------------------------------------------------------------------
 // Local data helpers
@@ -1496,9 +1401,149 @@ async function runQueueOpWithTimeout<T>(
 	}
 }
 
-const server = createServer(async (req, res) => {
+const { dispatch: dispatchRoutes } = createRouteDispatcher({
+	// --- Check-ins API ---
+	checkins: (req, res, method, url) => handleCheckInsRoutes(req, res, method, url, { checkInStore }),
+
+	// --- Jobs CRUD (extracted to server/routes/jobs.ts) ---
+	jobs: (req, res, method, url) => handleJobsRoutes(req, res, method, url, {
+		jobStore,
+		channelRegistry,
+		checkInStore,
+		resolveSessionPath: (sessionId) => {
+			const sessionPath = sessionFileFromId(paths.sessionDir, sessionId);
+			return sessionPath && existsSync(sessionPath) ? sessionPath : null;
+		},
+		recordJobRunSession,
+		abortJobRun: async (sessionId) => {
+			const sessionPath = sessionFileFromId(paths.sessionDir, sessionId);
+			if (!sessionPath || !existsSync(sessionPath)) return false;
+			return abortJobPromptInSession(sessionPath);
+		},
+	}),
+
+	// --- Channels + bridge (extracted to server/routes/channels.ts) ---
+	channels: (req, res, method, url) => handleChannelsRoutes(req, res, method, url, {
+		channelRegistry,
+		dataDir,
+		configPath: paths.configPath,
+		getConfig: () => config,
+		setConfig: (next) => { config = next; },
+		getDispatcher: () => dispatcher,
+		getBridgeToken: () => bridgeToken,
+		reloadFeishuChannel,
+		getWechatChannel: () => wechatChannel,
+		setWechatChannel: (channel) => { wechatChannel = channel; },
+	}),
+
+	// --- Skills API ---
+	skills: (req, res, method, url) => handleSkillsRoutes(req, res, method, url, {
+		skillsDir,
+		scheduleSkillsReload,
+		listProjectSkills,
+		setSkillEnabled,
+		installSkillZip,
+		installSkillMarkdown,
+		listSkillLibrary,
+		importSkillFromLibrary,
+	}),
+
+	// --- Sessions API (extracted to server/routes/sessions.ts) ---
+	sessions: (req, res, method, url) => handleSessionsRoutes(req, res, method, url, {
+		workspaceRegistry, dataDir, paths, getContentSource,
+		getCachedPresetAvailability: (presetId) => contentHubCatalog.getCachedPresetAvailability(presetId),
+		parseSessionFile, sessionRevision,
+		readSessionChannelMetadata, sessionChannelMetadataPath,
+		readSessionTopicMetadata, sessionTopicMetadataPath, writeSessionTopic,
+		readSessionQuestionMetadata, writeSessionQuestionMetadata,
+		recordCurrentSessionChannel, generateSessionTopic,
+		sessionFileFromId, releaseQueueFromQuestionBlockedTurn, runQueueOpWithTimeout,
+	}),
+
+	// --- Unified local search API ---
+	search: (req, res, method, url) => handleSearchRoutes(req, res, method, url, {
+		dataDir, paths, workspaceRegistry, parseSessionFile,
+	}),
+
+	// --- Wiki + L2 raw upload API (extracted to server/routes/wiki.ts) ---
+	wiki: (req, res, method, url) => handleWikiRoutes(req, res, method, url, { l2DataDir }),
+
+	// --- Learner profile API (extracted to server/routes/learner.ts) ---
+	learner: (req, res, method, url) => handleLearnerRoutes(req, res, method, url, { paths }),
+
+	// --- Workspace API + registry + session binding (extracted to server/routes/workspaces.ts) ---
+	workspaces: (req, res, method, url) => handleWorkspacesRoutes(req, res, method, url, {
+		workspaceRegistry, dataDir, paths,
+		installSkillZip, installSkillMarkdown, scheduleSkillsReload, importWorkspaceZip,
+		sessionFileFromId,
+		releaseQueueFromQuestionBlockedTurn, runQueueOpWithTimeout,
+	}),
+
+	// --- Presets API (extracted to server/routes/presets.ts) ---
+	presets: (req, res, method, url) => handlePresetsRoutes(req, res, method, url, { paths, listPresetLibrary }),
+
+	// --- Terminal sessions + Runs (extracted to server/routes/practice.ts) ---
+	practice: (req, res, method, url) => handlePracticeRoutes(req, res, method, url, {
+		workspaceRegistry, l2DataDir, terminalManager, runRecordStore,
+	}),
+
+	// --- Settings + MCP API (extracted to server/routes/settings.ts) ---
+	settings: (req, res, method, url) => handleSettingsRoutes(req, res, method, url, {
+		paths,
+		getConfig: () => config,
+		setConfig: (next) => { config = next; },
+		reloadFeishuChannel,
+		scheduleSkillsReload,
+		invalidateContentSource,
+	}),
+
+	// --- Slash commands API (extracted to server/routes/commands.ts) ---
+	commands: (req, res, method, url) => handleCommandsRoutes(req, res, method, url),
+
+	// --- Btw side-question API (extracted to server/routes/btw.ts) ---
+	btw: (req, res, method, url) => handleBtwRoutes(req, res, method, url, {
+		dataDir, sessionFileFromId, parseSessionFile,
+	}),
+
+	// --- Chat API (extracted to server/routes/chat.ts) ---
+	chat: (req, res, method, url) => handleChatRoutes(req, res, method, url, {
+		workspaceRegistry, dataDir, paths,
+		sessionFileFromId, releaseQueueFromQuestionBlockedTurn,
+		readSessionQuestionMetadata, writeSessionQuestionMetadata,
+		recordCurrentSessionChannel, maybeAutoGenerateTopic,
+		parseSessionFile, sessionRevision,
+	}),
+});
+
+const requestIdSymbol = Symbol("requestId");
+const server = createServer(async (req, response) => {
+	const startedAt = performance.now();
+	const requestId = randomUUID();
+	const res = Object.assign(response, { [requestIdSymbol]: requestId });
+	res.setHeader("x-request-id", requestId);
 	const url = req.url ?? "/";
 	const method = req.method ?? "GET";
+	const path = url.split("?", 1)[0];
+	const logLevel = path.startsWith("/api/") && path !== "/api/health" ? "info" : "debug";
+
+	// Defensive only: response stream errors must have a listener.
+	res.once("error", (err) => logger.debug({ err, requestId }, "HTTP response stream error"));
+	let accessLogged = false;
+	const logAccess = () => {
+		// Normal responses emit close after finish; disconnected SSE may only emit close.
+		if (accessLogged) return;
+		accessLogged = true;
+		logger[logLevel]({
+			method,
+			path,
+			statusCode: res.statusCode,
+			durationMs: Math.round(performance.now() - startedAt),
+			requestId,
+			outcome: res.writableFinished ? "finished" : "disconnected",
+		}, "HTTP request");
+	};
+	res.once("finish", logAccess);
+	res.once("close", logAccess);
 
 	try {
 		// --- Health check (no bootstrap needed) ---
@@ -1515,117 +1560,7 @@ const server = createServer(async (req, res) => {
 			await ensureBootstrapped();
 		}
 
-		// --- Check-ins API ---
-		if (await handleCheckInsRoutes(req, res, method, url, { checkInStore })) return;
-
-		// --- Jobs CRUD (extracted to server/routes/jobs.ts) ---
-		if (await handleJobsRoutes(req, res, method, url, {
-			jobStore,
-			channelRegistry,
-			checkInStore,
-			resolveSessionPath: (sessionId) => {
-				const sessionPath = sessionFileFromId(paths.sessionDir, sessionId);
-				return sessionPath && existsSync(sessionPath) ? sessionPath : null;
-			},
-			recordJobRunSession,
-			abortJobRun: async (sessionId) => {
-				const sessionPath = sessionFileFromId(paths.sessionDir, sessionId);
-				if (!sessionPath || !existsSync(sessionPath)) return false;
-				return abortJobPromptInSession(sessionPath);
-			},
-		})) return;
-
-		// --- Channels + bridge (extracted to server/routes/channels.ts) ---
-		if (await handleChannelsRoutes(req, res, method, url, {
-			channelRegistry,
-			dataDir,
-			configPath: paths.configPath,
-			getConfig: () => config,
-			setConfig: (next) => { config = next; },
-			getDispatcher: () => dispatcher,
-			getBridgeToken: () => bridgeToken,
-			reloadFeishuChannel,
-			getWechatChannel: () => wechatChannel,
-			setWechatChannel: (channel) => { wechatChannel = channel; },
-		})) return;
-
-		// --- Skills API ---
-		if (await handleSkillsRoutes(req, res, method, url, {
-			skillsDir,
-			scheduleSkillsReload,
-			listProjectSkills,
-			setSkillEnabled,
-			installSkillZip,
-			installSkillMarkdown,
-			listSkillLibrary,
-			importSkillFromLibrary,
-		})) return;
-
-		// --- Sessions API (extracted to server/routes/sessions.ts) ---
-		if (await handleSessionsRoutes(req, res, method, url, {
-			workspaceRegistry, dataDir, paths, getContentSource,
-			getCachedPresetAvailability: (presetId) => contentHubCatalog.getCachedPresetAvailability(presetId),
-			parseSessionFile, sessionRevision,
-			readSessionChannelMetadata, sessionChannelMetadataPath,
-			readSessionTopicMetadata, sessionTopicMetadataPath, writeSessionTopic,
-			readSessionQuestionMetadata, writeSessionQuestionMetadata,
-			recordCurrentSessionChannel, generateSessionTopic,
-			sessionFileFromId, releaseQueueFromQuestionBlockedTurn, runQueueOpWithTimeout,
-		})) return;
-
-		// --- Unified local search API ---
-		if (await handleSearchRoutes(req, res, method, url, {
-			dataDir, paths, workspaceRegistry, parseSessionFile,
-		})) return;
-
-		// --- Wiki + L2 raw upload API (extracted to server/routes/wiki.ts) ---
-		if (await handleWikiRoutes(req, res, method, url, { l2DataDir })) return;
-
-		// --- Learner profile API (extracted to server/routes/learner.ts) ---
-		if (await handleLearnerRoutes(req, res, method, url, { paths })) return;
-
-		// --- Workspace API + registry + session binding (extracted to server/routes/workspaces.ts) ---
-		if (await handleWorkspacesRoutes(req, res, method, url, {
-			workspaceRegistry, dataDir, paths,
-			installSkillZip, installSkillMarkdown, scheduleSkillsReload, importWorkspaceZip,
-			sessionFileFromId,
-			releaseQueueFromQuestionBlockedTurn, runQueueOpWithTimeout,
-		})) return;
-
-		// --- Presets API (extracted to server/routes/presets.ts) ---
-		if (await handlePresetsRoutes(req, res, method, url, { paths, listPresetLibrary })) return;
-
-		// --- Terminal sessions + Runs (extracted to server/routes/practice.ts) ---
-		if (await handlePracticeRoutes(req, res, method, url, {
-			workspaceRegistry, l2DataDir, terminalManager, runRecordStore,
-		})) return;
-
-		// --- Settings + MCP API (extracted to server/routes/settings.ts) ---
-		if (await handleSettingsRoutes(req, res, method, url, {
-			paths,
-			getConfig: () => config,
-			setConfig: (next) => { config = next; },
-			reloadFeishuChannel,
-			scheduleSkillsReload,
-			invalidateContentSource,
-		})) return;
-
-		// --- Slash commands API (extracted to server/routes/commands.ts) ---
-		if (await handleCommandsRoutes(req, res, method, url)) return;
-
-		// --- Btw side-question API (extracted to server/routes/btw.ts) ---
-		if (await handleBtwRoutes(req, res, method, url, {
-			dataDir, sessionFileFromId, parseSessionFile,
-		})) return;
-
-		// --- Chat API (extracted to server/routes/chat.ts) ---
-		if (await handleChatRoutes(req, res, method, url, {
-			workspaceRegistry, dataDir, paths,
-			sessionFileFromId, releaseQueueFromQuestionBlockedTurn,
-			readSessionQuestionMetadata, writeSessionQuestionMetadata,
-			recordCurrentSessionChannel, maybeAutoGenerateTopic,
-			parseSessionFile, sessionRevision,
-		})) return;
+		if (await dispatchRoutes(req, res, method, url)) return;
 
 		// --- Static files / SPA fallback ---
 		if (method === "GET" || method === "HEAD") {
@@ -1633,7 +1568,7 @@ const server = createServer(async (req, res) => {
 			const staticPath = safeJoinReal(webDistDir, urlPath.replace(/^\/+/, ""));
 			const sendBody = method === "GET";
 			// Try exact file in web/dist
-			if (staticPath && serveStatic(req, res, staticPath, sendBody, webDistDir)) return;
+			if (staticPath && await serveStatic(req, res, staticPath, sendBody, webDistDir)) return;
 			// Never route an asset miss through the SPA fallback. Returning
 			// index.html with a 200 status for a stale hashed JS/CSS URL makes the
 			// browser report an opaque dynamic-import failure instead of exposing
@@ -1642,13 +1577,13 @@ const server = createServer(async (req, res) => {
 			// SPA fallback: serve index.html for non-API, non-asset paths only. An
 			// unmatched /api/* route must fall through to the JSON 404 — returning
 			// HTML with a 200 status breaks API client error handling.
-			if (!isAssetRequest && urlPath !== "/api" && !urlPath.startsWith("/api/") && serveStatic(req, res, join(webDistDir, "index.html"), sendBody, webDistDir)) return;
+			if (!isAssetRequest && urlPath !== "/api" && !urlPath.startsWith("/api/") && await serveStatic(req, res, join(webDistDir, "index.html"), sendBody, webDistDir)) return;
 		}
 
 		// --- 404 ---
 		json(res, 404, { error: "Not found" });
 	} catch (err) {
-		logger.error({ err }, "unhandled error in HTTP handler");
+		logger.error({ err, requestId }, "unhandled error in HTTP handler");
 		// SSE/streaming responses have already sent headers — calling json()
 		// here would throw ERR_HTTP_HEADERS_SENT from inside this catch block
 		// and kill the process. The only safe move is to end the stream.
@@ -1815,6 +1750,14 @@ installProcessFallbacks({
 		try { wss.close(); } catch { /* best effort */ }
 	},
 });
+
+const gracefulShutdown = createGracefulShutdownHandler({
+	server,
+	wss,
+	exit: (code) => process.exit(code),
+});
+process.on("SIGTERM", gracefulShutdown);
+process.on("SIGINT", gracefulShutdown);
 
 server.listen(port, () => {
 	console.log(`[inno-server] listening on http://localhost:${port}`);

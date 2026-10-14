@@ -80,6 +80,9 @@ function phaseForPiEvent(type: string): "start" | "update" | "end" | undefined {
 
 function piEventSummary(event: any): string | undefined {
 	if (!event || typeof event !== "object") return undefined;
+	if (event.type === "agent_settled" && typeof event.aborted === "boolean") {
+		return event.aborted ? "aborted" : "settled";
+	}
 	if (typeof event.errorMessage === "string") return event.errorMessage;
 	if (typeof event.message === "string") return event.message;
 	if (typeof event.reason === "string") return event.reason;
@@ -95,7 +98,7 @@ function piEventDetail(event: any): Record<string, unknown> | undefined {
 	for (const key of [
 		"attempt", "maxAttempts", "delayMs", "errorMessage", "finalError", "stopReason",
 		"toolCallId", "toolName", "reason", "status", "command", "cwd", "output",
-		"entryId", "parentId", "filePath", "compactionId",
+		"entryId", "parentId", "filePath", "compactionId", "aborted",
 	]) {
 		if (event[key] !== undefined) detail[key] = event[key];
 	}

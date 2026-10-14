@@ -5,8 +5,10 @@ import {
 	fauxAssistantMessage,
 	fauxProvider,
 	fauxToolCall,
+	getCurrentSystemPrompt,
+	getCurrentTools,
 	InMemoryCredentialStore,
-	type Context,
+	type TranscriptContext,
 } from "@earendil-works/pi-ai";
 import {
 	createAgentSession,
@@ -103,16 +105,12 @@ function writeInclinedPlaneConcept(paths: RuntimePaths): void {
 	writeText(join(conceptsDir, "inclined-plane.md"), `${frontmatter}\n斜面问题的概念页。`);
 }
 
-function contextText(context: Context): string {
+function contextText(context: TranscriptContext): string {
 	return context.messages.map((message) => {
-		if (message.role === "user") {
-			if (typeof message.content === "string") return message.content;
-			return message.content.map((item) => item.type === "text" ? item.text : "").join("\n");
-		}
-		if (message.role === "toolResult") {
-			return message.content.map((item) => item.type === "text" ? item.text : "").join("\n");
-		}
-		return message.content.map((item) => item.type === "text" ? item.text : "").join("\n");
+		const content = (message as { content?: unknown }).content;
+		if (typeof content === "string") return content;
+		if (!Array.isArray(content)) return "";
+		return content.map((item) => item.type === "text" ? item.text : "").join("\n");
 	}).join("\n");
 }
 
@@ -192,8 +190,8 @@ describe("teaching entry gate through a real AgentSession", () => {
 		const calls: string[] = [];
 		provider.setResponses([
 			(context) => {
-				expect(context.systemPrompt).toContain("学习问题的教学入口门控");
-				expect(context.tools?.map((tool) => tool.name)).toContain("assess_learning_prerequisites");
+				expect(getCurrentSystemPrompt(context.messages)).toContain("学习问题的教学入口门控");
+				expect(getCurrentTools(context.messages).map((tool) => tool.name)).toContain("assess_learning_prerequisites");
 				expect(contextText(context)).toContain("光滑斜面");
 				return fauxAssistantMessage(fauxToolCall("assess_learning_prerequisites", {
 					target_concept_id: TARGET,

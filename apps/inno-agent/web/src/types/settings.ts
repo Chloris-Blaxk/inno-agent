@@ -113,10 +113,14 @@ export interface InnoSettings {
 		webAccess?: { enabled?: boolean };
 		permissionSystem?: { enabled?: boolean; mode?: PermissionPolicyMode };
 		computerUse?: { enabled?: boolean };
+		codemode?: { enabled?: boolean };
 	};
 	/** Effective computer-use state from the backend (resolves the
 	 *  INNO_DESKTOP default; `explicit` is the user's override, null = unset). */
 	computerUse?: { enabled: boolean; explicit: boolean | null; isDesktop: boolean };
+	/** Effective codemode state from the backend; restart-required like
+	 *  computer use (extension registers at session init). */
+	codemode?: { enabled: boolean };
 	smartInput?: SmartInputSettings;
 	mcp?: { enabled: boolean };
 	ui?: { theme: string; closeBehavior: WindowCloseBehavior; mathSingleDollar: boolean };

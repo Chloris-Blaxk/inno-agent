@@ -122,8 +122,8 @@ const DEFAULT_SMART_INPUT_RULE_IDS = new Set(DEFAULT_SMART_INPUT_RULES.map((rule
 /**
  * MCP (Model Context Protocol) support via the pi-mcp-adapter extension.
  * Master switch (default OFF, opt-in). Server definitions live in the standard
- * MCP config file `<configDir>/mcp.json` (managed through the web UI or edited
- * by hand); the adapter also merges the usual shared locations (`.mcp.json` in
+ * MCP config file `<configDir>/mcp-adapter.json` (managed through the web UI or
+ * edited by hand); the adapter also merges the usual shared locations (`.mcp.json` in
  * the workspace, `~/.config/mcp/mcp.json`, …). Changing `enabled` takes effect
  * on the next process start because the extension set is fixed at boot.
  */
@@ -303,12 +303,24 @@ export interface InnoConfig {
 	 *   needs Accessibility + Screen Recording grants; headless sessions
 	 *   cannot prompt, so a missing grant surfaces as a tool error with
 	 *   grant instructions.
+	 * - `codemode` (PI built-in `codemode` tool): lets the model write JS
+	 *   scripts (QuickJS sandbox) that call the session's other tools, so
+	 *   batch work happens in one call and only the script's output reaches
+	 *   the model. Nested calls run through the normal tool pipeline, so
+	 *   permission checks and observability events still apply. Default OFF:
+	 *   the web trace timeline shows a codemode call as a single step (its
+	 *   nested calls are only visible in logs), which trades away some of the
+	 *   per-tool transparency inno's teaching loop relies on. Activation is
+	 *   managed via the `defaultTools` entry in PI's settings.json
+	 *   (`syncCodemodeDefaultTools` in pi-runner.ts) and takes effect on
+	 *   restart, like computer use.
 	 */
 	plugins?: {
 		todo?: { enabled?: boolean };
 		webAccess?: { enabled?: boolean };
 		permissionSystem?: { enabled?: boolean; mode?: PermissionPolicyMode };
 		computerUse?: { enabled?: boolean };
+		codemode?: { enabled?: boolean };
 	};
 }
 
@@ -703,6 +715,16 @@ export function isComputerUseEnabled(config: InnoConfig): boolean {
 	const explicit = config.plugins?.computerUse?.enabled;
 	if (typeof explicit === "boolean") return explicit;
 	return process.env.INNO_DESKTOP === "1";
+}
+
+/**
+ * Codemode gate. Unlike todo/webAccess this is default-OFF everywhere
+ * (including the desktop app): it changes how tool work appears in the web
+ * trace timeline, so it is an explicit opt-in. `plugins.codemode.enabled`
+ * is the only switch.
+ */
+export function isCodemodeEnabled(config: InnoConfig): boolean {
+	return config.plugins?.codemode?.enabled === true;
 }
 
 /**

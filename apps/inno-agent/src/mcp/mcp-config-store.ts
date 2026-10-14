@@ -1,21 +1,25 @@
 /**
  * Managed MCP config store.
  *
- * Inno manages one canonical MCP config file — `<configDir>/mcp.json` — which
- * the pi-mcp-adapter extension is pointed at via `createMcpAdapter({
+ * Inno manages one canonical MCP config file — `<configDir>/mcp-adapter.json` —
+ * which the pi-mcp-adapter extension is pointed at via `createMcpAdapter({
  * configPath })`. The adapter additionally merges the standard shared MCP
  * locations; this store reads those too (read-only) so the UI can show the
  * full effective server list with a source label, while only entries in the
  * managed file are editable.
  *
  * Merge order follows the adapter's documented precedence (lowest first):
- *   1. ~/.config/mcp/mcp.json        (user-global shared)
- *   2. ~/.agents/mcp.json            (user-global tool-agnostic)
- *   3. ~/.agents/mcp/mcp.json        (user-global tool-agnostic)
- *   4. <configDir>/mcp.json          (managed — the adapter's "Pi global" layer)
- *   5. <workspaceDir>/.mcp.json      (project shared)
- *   6. <workspaceDir>/.pi/mcp.json   (project Pi override, highest)
+ *   1. ~/.config/mcp/mcp.json              (user-global shared)
+ *   2. ~/.agents/mcp.json                  (user-global tool-agnostic)
+ *   3. ~/.agents/mcp/mcp.json              (user-global tool-agnostic)
+ *   4. <configDir>/mcp-adapter.json        (managed — the adapter's "Pi global" layer)
+ *   5. <workspaceDir>/.mcp.json            (project shared)
+ *   6. <workspaceDir>/.pi/mcp-adapter.json (project adapter override, highest)
  * Later sources override earlier ones by server name.
+ *
+ * Note: `<configDir>/mcp.json` and `<workspaceDir>/.pi/mcp.json` are pi ≥0.99's
+ * built-in MCP files — the adapter (≥3.0) no longer reads them, so they are
+ * intentionally absent from this list.
  */
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -112,9 +116,24 @@ const DEFAULT_TEMPLATE: McpConfigFile = {
  * Seed the managed MCP config with a reference template on first run. Only
  * writes when the file does not exist at all — never overwrites a user's
  * config, however minimal.
+ *
+ * Also migrates the pre-0.99 managed file (`<configDir>/mcp.json`) to the
+ * pi-mcp-adapter ≥3.0 name (`mcp-adapter.json`) so pi's built-in MCP
+ * extension never picks up inno's managed servers.
  */
 export function seedManagedMcpConfig(paths: RuntimePaths): void {
 	const configPath = getManagedMcpConfigPath(paths);
+	if (!existsSync(configPath)) {
+		const legacyPath = join(paths.configDir, "mcp.json");
+		if (existsSync(legacyPath)) {
+			try {
+				renameSync(legacyPath, configPath);
+				mcpLogger.info({ from: legacyPath, to: configPath }, "migrated managed MCP config to mcp-adapter.json");
+			} catch (err) {
+				mcpLogger.warn({ err, from: legacyPath, to: configPath }, "failed to migrate legacy mcp.json");
+			}
+		}
+	}
 	if (existsSync(configPath)) return;
 	try {
 		writeManagedMcpConfig(paths, structuredClone(DEFAULT_TEMPLATE));
@@ -272,7 +291,7 @@ function listConfigSources(paths: RuntimePaths): DiscoveredSource[] {
 		{ path: join(home, ".agents", "mcp", "mcp.json"), kind: "agents", editable: false },
 		{ path: getManagedMcpConfigPath(paths), kind: "managed", editable: true },
 		{ path: join(paths.workspaceDir, ".mcp.json"), kind: "project", editable: false },
-		{ path: join(paths.workspaceDir, ".pi", "mcp.json"), kind: "project-pi", editable: false },
+		{ path: join(paths.workspaceDir, ".pi", "mcp-adapter.json"), kind: "project-pi", editable: false },
 	];
 }
 

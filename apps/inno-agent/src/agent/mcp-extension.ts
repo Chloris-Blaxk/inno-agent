@@ -10,9 +10,16 @@
  *    adapter's event-bus status snapshots into a module-level store, consumed
  *    by the HTTP layer (`GET /api/mcp`) to show live server status in the UI.
  *
- * Server definitions live in the managed file `<configDir>/mcp.json` (written
+ * Server definitions live in the managed file `<configDir>/mcp-adapter.json` (written
  * by `src/mcp/mcp-config-store.ts`); the adapter additionally merges the
  * standard shared locations (`.mcp.json`, `~/.config/mcp/mcp.json`, …).
+ *
+ * The file is named `mcp-adapter.json` (pi-mcp-adapter ≥3.0 convention), NOT
+ * `mcp.json`: pi ≥0.99's built-in MCP extension reads `<agentDir>/mcp.json`,
+ * and inno's agentDir IS configDir — if the managed file kept the old name,
+ * pi's built-in MCP (auto-loaded by `main()` in CLI mode) would start those
+ * servers even when inno's `mcp.enabled` is false, and would double-start
+ * them alongside the adapter.
  */
 import { join } from "node:path";
 import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-agent";
@@ -67,9 +74,9 @@ export function isMcpAdapterLoaded(): boolean {
 	return adapterLoaded;
 }
 
-/** Managed MCP config file the adapter is pointed at (`<configDir>/mcp.json`). */
+/** Managed MCP config file the adapter is pointed at (`<configDir>/mcp-adapter.json`). */
 export function getManagedMcpConfigPath(paths: RuntimePaths): string {
-	return join(paths.configDir, "mcp.json");
+	return join(paths.configDir, "mcp-adapter.json");
 }
 
 /**

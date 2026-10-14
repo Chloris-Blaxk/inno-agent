@@ -136,6 +136,39 @@ function ComputerUseToggle() {
 	);
 }
 
+function CodemodeToggle() {
+	const { t } = useTranslation();
+	const [changed, setChanged] = useState(false);
+	const state = useStoreSnapshot(settingsStore, () => ({
+		enabled: settingsStore.settings?.codemode?.enabled === true,
+		isSaving: settingsStore.isSavingCodemode,
+		isReady: settingsStore.settings !== null,
+	}));
+
+	function handleChange(enabled: boolean) {
+		settingsStore
+			.saveCodemode(enabled)
+			.then(() => setChanged(true))
+			.catch(() => undefined);
+	}
+
+	return (
+		<div className="flex flex-col items-end gap-1">
+			<Switch
+				checked={state.enabled}
+				disabled={!state.isReady || state.isSaving}
+				aria-label={t("settings.codemode.title")}
+				onChange={handleChange}
+			/>
+			{changed && (
+				<span className="text-[11px] text-[var(--inno-text-muted)]">
+					{t("settings.codemode.restartHint")}
+				</span>
+			)}
+		</div>
+	);
+}
+
 export function GeneralSettings() {
 	const { t } = useTranslation();
 	return (
@@ -174,6 +207,13 @@ export function GeneralSettings() {
 					label={t("settings.computerUse.title")}
 					description={t("settings.computerUse.description")}
 					control={<ComputerUseToggle />}
+				/>
+			</SettingsCard>
+			<SettingsCard>
+				<SettingsRow
+					label={t("settings.codemode.title")}
+					description={t("settings.codemode.description")}
+					control={<CodemodeToggle />}
 				/>
 			</SettingsCard>
 			</SettingsSection>

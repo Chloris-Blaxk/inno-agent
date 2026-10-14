@@ -721,6 +721,11 @@
 			"description": "允许 agent 查看并操作本机屏幕(点击、输入、浏览器控制)。macOS 首次使用需在系统设置中为 pi-computer-use.app 授予「辅助功能」与「屏幕录制」权限。",
 			"restartHint": "更改将在重启后生效。"
 		},
+		"codemode": {
+			"title": "代码模式 (Codemode)",
+			"description": "允许 agent 编写 JavaScript 脚本批量调用工具,只有脚本输出占用上下文,适合批量处理文件与资料。注意:聊天 trace 时间线只显示一次 codemode 调用,脚本内的子调用仅在日志中可见。",
+			"restartHint": "更改将在重启后生效。"
+		},
 		"permissions": {
 			"title": "工具权限",
 			"description": "控制 agent 执行命令前的审批粒度。危险命令与敏感文件在任何模式下都会被拒绝；切换后立即生效，无需重启。",
