@@ -2238,14 +2238,14 @@ inno-app-shell {
 }
 
 @media (max-width: 960px) {
-	/* Keep the chat full-width regardless of sidebar/workspace state so an
-	   open drawer never squeezes the conversation into a sliver. */
-	.app-layout > :nth-child(2) {
+	/* Browser drawers overlay full-width content. Keep desktop feature pages
+	   inset from the persistent icon rail so narrow windows cannot cover it. */
+	.app-layout--browser > :nth-child(2) {
 		left: 0;
 		right: 0;
 	}
 
-	.app-layout--sidebar-expanded > :nth-child(1) {
+	.app-layout--browser.app-layout--sidebar-expanded > :nth-child(1) {
 		width: min(300px, 85vw);
 		z-index: 30;
 		box-shadow: 0 8px 32px rgba(15, 23, 42, 0.18);

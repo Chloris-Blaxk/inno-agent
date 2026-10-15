@@ -180,7 +180,8 @@
 			"page": "笔记"
 		},
 		"graph": {
-			"fit": "自适应",
+			"fit": "查看全图",
+			"resetView": "回到默认视图",
 			"center": "居中",
 			"colorType": "页面类型",
 			"colorCommunity": "社区",

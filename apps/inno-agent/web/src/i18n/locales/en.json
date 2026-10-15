@@ -180,7 +180,8 @@
 			"page": "Notes"
 		},
 		"graph": {
-			"fit": "Fit",
+			"fit": "View full graph",
+			"resetView": "Reset view",
 			"center": "Center",
 			"colorType": "Page type",
 			"colorCommunity": "Community",
