@@ -2,7 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Tooltip } from "../ui/Tooltip.js";
+import { Tooltip } from "../ui/index.js";
 import { useContextUsage } from "./useContextUsage.js";
 import "./context-usage.css";
 

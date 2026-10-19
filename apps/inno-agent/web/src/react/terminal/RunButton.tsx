@@ -1,7 +1,7 @@
 import { Play } from "lucide-react";
 import { useCallback } from "react";
 import { terminalStore } from "../../stores/terminal-store.js";
-import { Tooltip } from "../ui/Tooltip.js";
+import { Tooltip } from "../ui/index.js";
 
 function defaultCommand(relPath: string): string | null {
 	const lower = relPath.toLowerCase();

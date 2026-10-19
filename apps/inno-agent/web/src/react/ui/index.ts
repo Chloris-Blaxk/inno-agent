@@ -1,5 +1,6 @@
 export * from "./ContextMenu.js";
 export * from "./Button.js";
+export * from "./Dialog.js";
 export * from "./FormControls.js";
 export * from "./Menu.js";
 export * from "./Popover.js";
@@ -12,3 +13,4 @@ export * from "./Switch.js";
 export * from "./Tabs.js";
 export * from "./Tooltip.js";
 export * from "./input.js";
+export * from "./motion.js";

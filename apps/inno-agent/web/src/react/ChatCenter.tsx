@@ -50,7 +50,7 @@ import {
 import { fetchSlashCommands, type SlashCommandItem } from "../api/commands.js";
 import { WorkspaceSwitchConfirm } from "./chat/WorkspaceSwitchConfirm.js";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher.js";
-import { Tooltip } from "./ui/Tooltip.js";
+import { Tooltip } from "./ui/index.js";
 import { BtwPanel } from "./BtwPanel.js";
 import { PermissionModeControl } from "./chat/PermissionModeControl.js";
 import type { WorkspaceChoice } from "./WorkspaceSwitcher.js";

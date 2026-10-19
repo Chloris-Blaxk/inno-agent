@@ -17,7 +17,7 @@ import {
 import type { ChatTraceStep, ChatTraceStepKind, ChatTraceStepStatus } from "../../types/chat.js";
 import type { AnsweredQuestionnaireView } from "../../utils/questionnaire.js";
 import { MarkdownArtifact } from "../MarkdownArtifact.js";
-import { Tooltip } from "../ui/Tooltip.js";
+import { Tooltip } from "../ui/index.js";
 import { AnsweredQuestionCard } from "./AnsweredQuestionCard.js";
 import {
 	isOpenStatus,

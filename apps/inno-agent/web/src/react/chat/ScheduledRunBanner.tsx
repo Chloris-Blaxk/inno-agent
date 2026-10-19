@@ -6,7 +6,7 @@ import { ApiError } from "../../api/client.js";
 import { chatStore } from "../../stores/chat-store.js";
 import { sessionsStore } from "../../stores/sessions-store.js";
 import { findJobById, runJobInConversation } from "../jobs/runJobInConversation.js";
-import { Button } from "../ui/Button.js";
+import { Button } from "../ui/index.js";
 
 /** Claim the slot slightly before the deadline so the client wins the race
  *  against the server-side headless auto-execution. */

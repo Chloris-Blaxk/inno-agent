@@ -185,7 +185,7 @@ describe("server smoke", () => {
 	it("GET /api/search remains reachable through prefix route dispatch", async () => {
 		const res = await api("/api/search?category=workspace");
 		expect(res.status).toBe(200);
-		expect(await res.json()).toEqual({ results: [] });
+		expect(await res.json()).toEqual({ results: [], total: 0, counts: {} });
 	});
 
 	it("GET /api/sessions/:id returns 404 for a missing session", async () => {

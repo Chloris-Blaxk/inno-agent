@@ -1,12 +1,5 @@
-import { AlertTriangle, ChevronDown, Shield, ShieldAlert, ShieldCheck } from "lucide-react";
-import { createPortal } from "react-dom";
-import { motion } from "motion/react";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
-import { settingsStore } from "../../stores/settings-store.js";
-import type { PermissionPolicyMode } from "../../types/settings.js";
-import { useStoreSnapshot } from "../hooks.js";
 import {
+	useUITransition,
 	DropdownMenu,
 	DropdownMenuChoiceItem,
 	DropdownMenuContent,
@@ -16,6 +9,14 @@ import {
 	Checkbox,
 	IconButton,
 } from "../ui/index.js";
+import { AlertTriangle, ChevronDown, Shield, ShieldAlert, ShieldCheck } from "lucide-react";
+import { createPortal } from "react-dom";
+import { motion } from "motion/react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { settingsStore } from "../../stores/settings-store.js";
+import type { PermissionPolicyMode } from "../../types/settings.js";
+import { useStoreSnapshot } from "../hooks.js";
 
 const MODES: PermissionPolicyMode[] = ["default", "auto", "yolo"];
 
@@ -39,6 +40,7 @@ const MODE_ICONS: Record<PermissionPolicyMode, typeof Shield> = {
  * 允许完全访问 dialog); the active yolo label renders red ("full access").
  */
 export function PermissionModeControl({ variant = "icon" }: { variant?: "icon" | "pill" | "inline" }) {
+	const uiTransition = useUITransition();
 	const { t } = useTranslation();
 	const state = useStoreSnapshot(settingsStore, () => ({
 		mode: settingsStore.settings?.plugins?.permissionSystem?.mode ?? "default",
@@ -97,7 +99,7 @@ export function PermissionModeControl({ variant = "icon" }: { variant?: "icon" |
 							<motion.span
 								className="inline-flex shrink-0"
 								animate={{ rotate: open ? 180 : 0 }}
-								transition={{ duration: 0.16, ease: "easeInOut" }}
+								transition={uiTransition}
 							>
 								<ChevronDown size={13} aria-hidden="true" />
 							</motion.span>

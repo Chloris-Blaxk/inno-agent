@@ -35,6 +35,10 @@
 		"loading": "正在搜索…",
 		"failed": "搜索失败",
 		"archived": "已归档",
+		"viewAll": "查看全部",
+		"clear": "清除",
+		"loadMore": "加载更多",
+		"resultCount": "共 {{count}} 条结果",
 		"shortcuts": {
 			"move": "↑↓ 上下选择",
 			"open": "↵ 打开",

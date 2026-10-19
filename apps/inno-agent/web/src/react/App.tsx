@@ -18,7 +18,7 @@ import { FeaturePage } from "./FeaturePage.js";
 import { SessionSidebar, startNewChat } from "./SessionSidebar.js";
 import { WorkspacePanel } from "./WorkspacePanel.js";
 import { DesktopWindowChrome } from "./DesktopWindowChrome.js";
-import { Tooltip } from "./ui/Tooltip.js";
+import { Tooltip } from "./ui/index.js";
 import {
 	CHAT_ONLY_BP,
 	DESKTOP_SIDEBAR_CONTENT_WIDTH,

@@ -7,7 +7,10 @@ import { workspaceFileUrl } from "../../api/workspace.js";
 import { workspaceStore } from "../../stores/workspace-store.js";
 import { buildConversationTurns, ConversationMinimap } from "../ConversationMinimap.js";
 import { useStoreSnapshot } from "../hooks.js";
-import { Spinner } from "../ui/Spinner.js";
+import {
+	Spinner,
+	Tooltip,
+} from "../ui/index.js";
 import { MessageBubble } from "./MessageBubble.js";
 import { JobStreamBubbles } from "./JobStreamBubbles.js";
 import { StreamingBubbles } from "./StreamingBubbles.js";
@@ -15,7 +18,6 @@ import { TodoWidget, extractTodoTasks } from "./TodoWidget.js";
 import { answeredQuestionnaireFromTool } from "../../utils/questionnaire.js";
 import type { AnsweredQuestionnaireView } from "../../utils/questionnaire.js";
 import { TerminalDrawer } from "../terminal/TerminalDrawer.js";
-import { Tooltip } from "../ui/Tooltip.js";
 
 function traceContainsAssistantText(message: ChatMessage): boolean {
 	if (message.trace?.some((step) => (step.kind === "progress" || step.kind === "answer") && Boolean(step.text?.trim()))) return true;

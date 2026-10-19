@@ -52,7 +52,8 @@ import { ensureWindowForPanel } from "./window-expansion.js";
 		await expect(ensureWindowForPanel("right", 500, "half")).resolves.toBe("ready");
 		expect(getWindowWidthCapacity).toHaveBeenCalledWith("right");
 		expect(getWindowWidthCapacity).toHaveBeenCalledWith("left");
-		expect(expandWindowWidth).toHaveBeenCalledWith("left", 390);
+		// 52px rail + 246px sidebar + 500px workspace + 800px chat - 1200px window.
+		expect(expandWindowWidth).toHaveBeenCalledWith("left", 398);
 	});
 
 	it("reserves the 52px rail when expanding a workspace from collapsed desktop state", async () => {

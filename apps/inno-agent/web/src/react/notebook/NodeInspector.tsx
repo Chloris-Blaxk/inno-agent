@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { notebookStore } from "../../stores/notebook-store.js";
 import { useStoreSnapshot } from "../hooks.js";
-import { Button } from "../ui/Button.js";
+import { Button } from "../ui/index.js";
 
 export function NodeInspector() {
 	const { t } = useTranslation();

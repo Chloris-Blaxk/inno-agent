@@ -18,4 +18,8 @@ export interface SearchResult {
 
 export interface SearchResponse {
 	results: SearchResult[];
+	total: number;
+	counts: Partial<Record<SearchResultCategory, number>>;
+	/** Offset of the next page within a single category. */
+	nextOffset?: number;
 }

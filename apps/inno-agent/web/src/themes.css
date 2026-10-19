@@ -14,8 +14,8 @@
 	--inno-surface-muted: #f1f4f9;
 	--inno-surface-raised: #fbfcfe;
 	--inno-sidebar-bg: #f8fafd;
-	--inno-sidebar-expanded-bg: #f5f7fa;
-	--inno-sidebar-preview-bg: #f8fafd;
+	--inno-sidebar-expanded-bg: #f8fafd;
+	--inno-sidebar-preview-bg: #f5f7fa;
 	--inno-sidebar-active: #dde3ea;
 	--inno-chat-bg: #ffffff;
 	--inno-window-chrome-bg: #f8fafd;
@@ -63,8 +63,8 @@
 	--inno-surface-muted: #3a3a3a;
 	--inno-surface-raised: #383838;
 	--inno-sidebar-bg: #202020;
-	--inno-sidebar-expanded-bg: #202020;
-	--inno-sidebar-preview-bg: #252525;
+	--inno-sidebar-expanded-bg: #252525;
+	--inno-sidebar-preview-bg: #202020;
 	--inno-sidebar-rail-bg: #282828;
 	--inno-sidebar-active: #3a3a3a;
 	--inno-chat-bg: #171717;

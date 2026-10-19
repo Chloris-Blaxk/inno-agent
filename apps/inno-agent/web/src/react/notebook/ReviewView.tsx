@@ -1,7 +1,7 @@
 import { FileText, Search, ClipboardCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { WikiReview } from "../../types/wiki.js";
-import { Tooltip } from "../ui/Tooltip.js";
+import { Tooltip } from "../ui/index.js";
 
 interface ReviewViewProps {
 	reviews: WikiReview[];

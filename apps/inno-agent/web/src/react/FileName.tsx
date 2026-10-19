@@ -1,5 +1,5 @@
 import type { HTMLAttributes } from "react";
-import { Tooltip } from "./ui/Tooltip.js";
+import { Tooltip } from "./ui/index.js";
 
 interface FileNameProps extends Omit<HTMLAttributes<HTMLSpanElement>, "children"> {
 	name: string;

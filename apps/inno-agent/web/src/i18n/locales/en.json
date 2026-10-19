@@ -35,6 +35,10 @@
 		"loading": "Searching…",
 		"failed": "Search failed",
 		"archived": "Archived",
+		"viewAll": "View all",
+		"clear": "Clear",
+		"loadMore": "Load more",
+		"resultCount": "{{count}} results",
 		"shortcuts": {
 			"move": "↑↓ Move",
 			"open": "↵ Open",

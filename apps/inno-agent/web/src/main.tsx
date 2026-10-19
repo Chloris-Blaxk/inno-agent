@@ -8,7 +8,7 @@ import "@mariozechner/mini-lit/dist/MarkdownBlock.js";
 import { Component, StrictMode, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./react/App.js";
-import { TooltipProvider } from "./react/ui/Tooltip.js";
+import { TooltipProvider } from "./react/ui/index.js";
 import { recoverFromDynamicImportError } from "./utils/dynamic-import-recovery.js";
 
 interface AppErrorBoundaryState {

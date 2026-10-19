@@ -9,10 +9,13 @@ import { KIND_LABEL_KEYS, kindFromName, kindFromRule, nameMatchesRule } from "./
 import type { PendingUpload } from "../composer-utils.js";
 import { FileName } from "../../FileName.js";
 import { FileTypeIcon } from "../../FileTypeIcon.js";
-import { ContextMenu, type ContextMenuItem } from "../../ui/ContextMenu.js";
-import { MenuOption } from "../../ui/Menu.js";
-import { PopoverSurface } from "../../ui/PopoverSurface.js";
-import { Tooltip } from "../../ui/Tooltip.js";
+import {
+	ContextMenu,
+	type ContextMenuItem,
+	MenuOption,
+	PopoverSurface,
+	Tooltip,
+} from "../../ui/index.js";
 import { useTitleMarquee } from "../../hooks.js";
 
 /**

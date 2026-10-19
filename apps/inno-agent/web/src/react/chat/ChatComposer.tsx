@@ -1,8 +1,5 @@
-import { useRef, useState, type ChangeEvent, type ClipboardEvent, type CompositionEvent as ReactCompositionEvent, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject } from "react";
-import { X, ArrowUp, Square, RotateCcw, Image, ScrollText, ChevronDown, CornerDownLeft, Plus, Settings2, HardDriveUpload } from "lucide-react";
-import { motion } from "motion/react";
-import { useTranslation } from "react-i18next";
 import {
+	useUITransition,
 	DropdownMenu,
 	DropdownMenuActionItem,
 	DropdownMenuContent,
@@ -15,6 +12,10 @@ import {
 	IconButton,
 	Tooltip,
 } from "../ui/index.js";
+import { useRef, useState, type ChangeEvent, type ClipboardEvent, type CompositionEvent as ReactCompositionEvent, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject } from "react";
+import { X, ArrowUp, Square, RotateCcw, Image, ScrollText, ChevronDown, CornerDownLeft, Plus, Settings2, HardDriveUpload } from "lucide-react";
+import { motion } from "motion/react";
+import { useTranslation } from "react-i18next";
 import { FileName } from "../FileName.js";
 import { FileTypeIcon } from "../FileTypeIcon.js";
 import type { InnoModelInfo } from "../../types/settings.js";
@@ -141,6 +142,7 @@ export function ChatComposer({
 	onReconnect,
 	slashPalette,
 }: ChatComposerProps) {
+	const uiTransition = useUITransition();
 	const { t } = useTranslation();
 	const [osFileDragOver, setOsFileDragOver] = useState(false);
 	const currentModelLabel = currentModel?.name || currentModel?.id || modelState.defaultModel || t("chat.modelUnavailable");
@@ -368,7 +370,7 @@ export function ChatComposer({
 						<motion.span
 							className="inline-flex shrink-0"
 							animate={{ rotate: modelPickerOpen ? 180 : 0 }}
-							transition={{ duration: 0.16, ease: "easeInOut" }}
+							transition={uiTransition}
 						>
 							<ChevronDown size={13} aria-hidden="true" />
 						</motion.span>

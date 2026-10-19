@@ -13,7 +13,7 @@ export interface NavigationAvailability {
 const STATE_KEY = "__innoAgentNavigation";
 export const NAVIGATION_HISTORY_CHANGE_EVENT = "inno-agent-navigation-history-change";
 
-let knownMaxIndex = 0;
+let knownMaxIndex: number | null = null;
 
 function getHistoryState(): Record<string, unknown> {
 	const state: unknown = window.history.state;
@@ -26,8 +26,9 @@ function getPosition(): NavigationPosition | null {
 	const position = getHistoryState()[STATE_KEY];
 	if (!position || typeof position !== "object") return null;
 	const { index, maxIndex } = position as Partial<NavigationPosition>;
-	if (!Number.isInteger(index) || !Number.isInteger(maxIndex)) return null;
-	return { index: index as number, maxIndex: maxIndex as number };
+	if (typeof index !== "number" || typeof maxIndex !== "number"
+		|| !Number.isInteger(index) || !Number.isInteger(maxIndex) || index < 0 || maxIndex < index) return null;
+	return { index, maxIndex };
 }
 
 function savePosition(position: NavigationPosition, mode: "push" | "replace", url: URL | string): void {
@@ -42,7 +43,7 @@ export function initializeNavigationHistory(): void {
 	if (typeof window === "undefined") return;
 	const position = getPosition();
 	if (position) {
-		knownMaxIndex = Math.max(knownMaxIndex, position.maxIndex);
+		knownMaxIndex ??= position.maxIndex;
 		if (position.maxIndex !== knownMaxIndex) {
 			savePosition({ ...position, maxIndex: knownMaxIndex }, "replace", window.location.href);
 		}
@@ -57,7 +58,7 @@ export function syncNavigationHistory(url: URL, mode: HistoryMode): void {
 	if (mode === "none" || typeof window === "undefined") return;
 	const current = getPosition();
 	const index = current?.index ?? 0;
-	knownMaxIndex = Math.max(knownMaxIndex, current?.maxIndex ?? index);
+	knownMaxIndex ??= current?.maxIndex ?? index;
 	if (mode === "push") {
 		const nextIndex = index + 1;
 		knownMaxIndex = nextIndex;
@@ -72,7 +73,10 @@ export function getNavigationAvailability(): NavigationAvailability {
 	if (typeof window === "undefined") return { canGoBack: false, canGoForward: false };
 	const position = getPosition();
 	if (!position) return { canGoBack: false, canGoForward: false };
-	knownMaxIndex = Math.max(knownMaxIndex, position.maxIndex);
+	// After Back → Push, older entries still contain the discarded branch's
+	// maximum. Trust the current timeline owner, or Forward becomes enabled
+	// at the new end even though the browser has no forward entry.
+	knownMaxIndex ??= position.maxIndex;
 	if (position.maxIndex !== knownMaxIndex) {
 		savePosition({ ...position, maxIndex: knownMaxIndex }, "replace", window.location.href);
 	}

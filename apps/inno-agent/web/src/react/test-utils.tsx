@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import { render as testingLibraryRender, type RenderOptions } from "@testing-library/react";
-import { TooltipProvider } from "./ui/Tooltip.js";
+import { TooltipProvider } from "./ui/index.js";
 
 export function renderWithTooltipProvider(
 	ui: ReactElement,

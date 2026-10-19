@@ -5,12 +5,15 @@ import { useTranslation } from "react-i18next";
 import type { PendingUpload } from "./composer-utils.js";
 import type { SmartInputRule } from "../../types/settings.js";
 import { anyActiveRuleMatches, kindFromName } from "./smart-input/kinds.js";
-import { ContextMenu, type ContextMenuItem } from "../ui/ContextMenu.js";
+import {
+	ContextMenu,
+	type ContextMenuItem,
+	Tooltip,
+} from "../ui/index.js";
 import { buildDragFilePanel, hiddenDragImage } from "./smart-input/drag-utils.js";
 import { workspaceFileUrl } from "../../api/workspace.js";
 import { FileName } from "../FileName.js";
 import { FileTypeIcon } from "../FileTypeIcon.js";
-import { Tooltip } from "../ui/Tooltip.js";
 
 export interface ChatUploadChipsProps {
 	uploads: PendingUpload[];

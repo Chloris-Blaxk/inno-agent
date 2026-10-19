@@ -1,3 +1,24 @@
+import {
+	useUITransition,
+	Spinner,
+	ContextMenu,
+	type ContextMenuItem,
+	Button,
+	IconButton,
+	Input,
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+	DropdownMenu,
+	DropdownMenuActionItem,
+	DropdownMenuContent,
+	DropdownMenuLabel,
+	DropdownMenuOptionItem,
+	DropdownMenuRadioGroup,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+	Tooltip,
+} from "./ui/index.js";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type FocusEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
@@ -48,29 +69,9 @@ import { triggerDownload } from "../api/workspace.js";
 import { exportSessionShowcase } from "../api/sessions.js";
 import type { SessionChannel, SessionMeta } from "../api/sessions.js";
 import { useStoreSnapshot, useTitleMarquee } from "./hooks.js";
-import { Spinner } from "./ui/Spinner.js";
-import { ContextMenu, type ContextMenuItem } from "./ui/ContextMenu.js";
-import {
-	Button,
-	IconButton,
-	Input,
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-	DropdownMenu,
-	DropdownMenuActionItem,
-	DropdownMenuContent,
-	DropdownMenuLabel,
-	DropdownMenuOptionItem,
-	DropdownMenuRadioGroup,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-	Tooltip,
-} from "./ui/index.js";
 import { getLongPressHandlers } from "./ui/long-press.js";
 import { useSidebarPreview } from "./use-sidebar-preview.js";
 
-const SIDEBAR_SECTION_TITLE_STYLE: CSSProperties = { fontSize: "14px" };
 
 export function startNewChat(): void {
 	void (async () => {
@@ -737,13 +738,11 @@ function NavItem({
 	label,
 	active,
 	onClick,
-	labelStyle,
 }: {
 	icon: ReactNode;
 	label: string;
 	active: boolean;
 	onClick: () => void;
-	labelStyle?: CSSProperties;
 }) {
 	return (
 		<Button
@@ -754,7 +753,7 @@ function NavItem({
 			onClick={onClick}
 		>
 			<span className="shrink-0 text-[var(--inno-text-muted)]">{icon}</span>
-			<span className="min-w-0 truncate" style={labelStyle}>{label}</span>
+			<span className="min-w-0 truncate text-sm">{label}</span>
 		</Button>
 	);
 }
@@ -824,6 +823,8 @@ function SidebarUserMenu({ compact = false }: { compact?: boolean }) {
 /* ── Main sidebar ── */
 
 export function SessionSidebar({ collapsed, isDesktopWindow, onOpenSearch, chatContent }: SessionSidebarProps) {
+	const uiTransition = useUITransition();
+	const panelTransition = useUITransition("modal");
 	const { t } = useTranslation();
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [editingName, setEditingName] = useState("");
@@ -1454,7 +1455,7 @@ export function SessionSidebar({ collapsed, isDesktopWindow, onOpenSearch, chatC
 							initial={{ height: 0, opacity: 0 }}
 							animate={{ height: "auto", opacity: 1 }}
 							exit={{ height: 0, opacity: 0 }}
-							transition={{ duration: 0.15, ease: "easeInOut" }}
+							transition={uiTransition}
 							className="overflow-hidden"
 						>
 							{group.sessions.slice(0, visibleCount).map(renderSession)}
@@ -1619,18 +1620,18 @@ export function SessionSidebar({ collapsed, isDesktopWindow, onOpenSearch, chatC
 	const compactNewChatSectionSpacing = isDesktopWindow;
 	const projectSection = (
 			<section aria-label={t("sidebar.projects")}>
-			<div className="flex h-8 min-h-8 items-center justify-between pl-1.5 pr-3.5 text-[14px] font-medium text-[var(--inno-text-muted)]">
+			<div className="flex h-8 min-h-8 items-center justify-between pl-1.5 pr-3.5 text-sm font-medium text-[var(--inno-text-muted)]">
 				<button
 					type="button"
-					className="flex min-w-0 items-center gap-1.5 text-left text-[14px] font-medium text-[var(--inno-text-muted)] transition-colors hover:text-[var(--inno-text)]"
+					className="flex min-w-0 items-center gap-1.5 text-left text-sm font-medium text-[var(--inno-text-muted)] transition-colors hover:text-[var(--inno-text)]"
 					aria-expanded={!projectSectionCollapsed}
 					onClick={() => setProjectSectionCollapsed((value) => !value)}
 				>
-					<span style={SIDEBAR_SECTION_TITLE_STYLE}>{t("sidebar.projects")}</span>
+					<span className="text-sm">{t("sidebar.projects")}</span>
 					<motion.span
 						className="inline-flex shrink-0"
 						animate={{ rotate: projectSectionCollapsed ? -90 : 0 }}
-						transition={{ duration: 0.16, ease: "easeInOut" }}
+						transition={uiTransition}
 					>
 						<ChevronDown size={14} aria-hidden="true" />
 					</motion.span>
@@ -1647,7 +1648,7 @@ export function SessionSidebar({ collapsed, isDesktopWindow, onOpenSearch, chatC
 						initial={{ height: 0, opacity: 0 }}
 						animate={{ height: "auto", opacity: 1 }}
 						exit={{ height: 0, opacity: 0 }}
-						transition={{ duration: 0.2, ease: "easeInOut" }}
+						transition={panelTransition}
 						className="overflow-hidden"
 					>
 						<div className="mt-0.5 flex flex-col">
@@ -1685,7 +1686,7 @@ export function SessionSidebar({ collapsed, isDesktopWindow, onOpenSearch, chatC
 							</div>
 						) : null}
 						<div className="min-w-0">
-							<h1 className="truncate text-[16px] font-semibold tracking-tight text-[var(--inno-text)]" style={{ fontSize: "16px" }}>
+							<h1 className="truncate text-base font-semibold tracking-tight text-[var(--inno-text)]">
 								Inno Agent
 							</h1>
 						</div>
@@ -1727,7 +1728,6 @@ export function SessionSidebar({ collapsed, isDesktopWindow, onOpenSearch, chatC
 				<NavItem
 					icon={<SquarePen size={16} />}
 					label={t("nav.newChat")}
-					labelStyle={SIDEBAR_SECTION_TITLE_STYLE}
 					// New chat is an action, not a persistent destination. The chat
 					// page remains the active destination for real sessions below.
 					active={false}
@@ -1766,18 +1766,18 @@ export function SessionSidebar({ collapsed, isDesktopWindow, onOpenSearch, chatC
 					<>
 						{pinnedGroups.length > 0 ? (
 							<section aria-label={t("sidebar.pinnedProjects")}>
-								<div className="flex h-8 min-h-8 items-center justify-between pl-1.5 pr-3.5 text-[14px] font-medium text-[var(--inno-text-muted)]">
+								<div className="flex h-8 min-h-8 items-center justify-between pl-1.5 pr-3.5 text-sm font-medium text-[var(--inno-text-muted)]">
 									<button
 										type="button"
-										className="flex min-w-0 items-center gap-1.5 text-left text-[14px] font-medium text-[var(--inno-text-muted)] transition-colors hover:text-[var(--inno-text)]"
+										className="flex min-w-0 items-center gap-1.5 text-left text-sm font-medium text-[var(--inno-text-muted)] transition-colors hover:text-[var(--inno-text)]"
 										aria-expanded={!pinnedSectionCollapsed}
 										onClick={() => setPinnedSectionCollapsed((value) => !value)}
 									>
-										<span style={SIDEBAR_SECTION_TITLE_STYLE}>{t("sidebar.pinnedProjects")}</span>
+										<span className="text-sm">{t("sidebar.pinnedProjects")}</span>
 										<motion.span
 											className="inline-flex shrink-0"
 											animate={{ rotate: pinnedSectionCollapsed ? -90 : 0 }}
-											transition={{ duration: 0.16, ease: "easeInOut" }}
+											transition={uiTransition}
 										>
 											<ChevronDown size={14} aria-hidden="true" />
 										</motion.span>
@@ -1790,7 +1790,7 @@ export function SessionSidebar({ collapsed, isDesktopWindow, onOpenSearch, chatC
 											initial={{ height: 0, opacity: 0 }}
 											animate={{ height: "auto", opacity: 1 }}
 											exit={{ height: 0, opacity: 0 }}
-											transition={{ duration: 0.2, ease: "easeInOut" }}
+											transition={panelTransition}
 											className="overflow-hidden"
 										>
 											<div className="mt-0.5 flex flex-col">
@@ -1804,21 +1804,21 @@ export function SessionSidebar({ collapsed, isDesktopWindow, onOpenSearch, chatC
 						{projectSection}
 						{recentSessions.length > 0 ? (
 							<section aria-label={t("sidebar.recent")}>
-								<div className="flex h-8 min-h-8 items-center justify-between pl-1.5 pr-3.5 text-[14px] font-medium text-[var(--inno-text-muted)]">
+								<div className="flex h-8 min-h-8 items-center justify-between pl-1.5 pr-3.5 text-sm font-medium text-[var(--inno-text-muted)]">
 									<button
 										type="button"
-										className="flex min-w-0 items-center gap-1.5 text-left text-[14px] font-medium text-[var(--inno-text-muted)] transition-colors hover:text-[var(--inno-text)]"
+										className="flex min-w-0 items-center gap-1.5 text-left text-sm font-medium text-[var(--inno-text-muted)] transition-colors hover:text-[var(--inno-text)]"
 										aria-expanded={!recentSectionCollapsed}
 										onClick={() => {
 											setRecentSectionCollapsed((collapsed) => !collapsed);
 											setRecentExpanded(false);
 										}}
 									>
-										<span style={SIDEBAR_SECTION_TITLE_STYLE}>{t("sidebar.recent")}</span>
+										<span className="text-sm">{t("sidebar.recent")}</span>
 										<motion.span
 											className="inline-flex shrink-0"
 											animate={{ rotate: recentSectionCollapsed ? -90 : 0 }}
-											transition={{ duration: 0.16, ease: "easeInOut" }}
+											transition={uiTransition}
 										>
 											<ChevronDown size={14} aria-hidden="true" />
 										</motion.span>
@@ -1831,7 +1831,7 @@ export function SessionSidebar({ collapsed, isDesktopWindow, onOpenSearch, chatC
 											initial={{ height: 0, opacity: 0 }}
 											animate={{ height: "auto", opacity: 1 }}
 											exit={{ height: 0, opacity: 0 }}
-											transition={{ duration: 0.2, ease: "easeInOut" }}
+											transition={panelTransition}
 											className="overflow-hidden"
 										>
 											<div className="mt-0.5">{recentVisibleSessions.map(renderSession)}</div>
@@ -1851,8 +1851,8 @@ export function SessionSidebar({ collapsed, isDesktopWindow, onOpenSearch, chatC
 						) : null}
 						{groups.some((group) => group.section === "channels") ? (
 							<section aria-label={t("sidebar.channels")}>
-								<div className="flex h-8 min-h-8 items-center justify-between pl-1.5 pr-3.5 text-[14px] font-medium text-[var(--inno-text-muted)]">
-									<span style={SIDEBAR_SECTION_TITLE_STYLE}>{t("sidebar.channels")}</span>
+								<div className="flex h-8 min-h-8 items-center justify-between pl-1.5 pr-3.5 text-sm font-medium text-[var(--inno-text-muted)]">
+									<span className="text-sm">{t("sidebar.channels")}</span>
 								</div>
 								<div className="mt-0.5">
 									{groups.filter((group) => group.section === "channels").map((group) => renderWorkspaceGroup(group, false, "mt-0"))}

@@ -102,6 +102,22 @@ describe("SessionsStore navigation", () => {
 		expect(store.contextUsageRevision).toBe(1);
 	});
 
+	it("shows a first message immediately without duplicating the pending session", () => {
+		const store = new SessionsStoreImpl();
+		store.showPendingSession("pending.jsonl", "  First prompt  ");
+		store.showPendingSession("pending.jsonl", "Latest preview");
+		expect(store.sessions).toHaveLength(1);
+		expect(store.sessions[0]).toMatchObject({ id: "pending.jsonl", name: "First prompt", preview: "Latest preview", messageCount: 1, channels: ["web"], origin: "web" });
+	});
+
+	it("keeps a recorded session title and channel when moving its latest preview to the top", () => {
+		const store = new SessionsStoreImpl();
+		store.sessions = [{ ...session("old.jsonl"), name: "Manual title", hasTopic: true, channels: ["feishu"], origin: "feishu", messageCount: 4 }, session("other.jsonl")];
+		store.showPendingSession("old.jsonl", "New message");
+		expect(store.sessions.map((item) => item.id)).toEqual(["old.jsonl", "other.jsonl"]);
+		expect(store.sessions[0]).toMatchObject({ name: "Manual title", preview: "New message", messageCount: 4, channels: ["feishu"], origin: "feishu" });
+	});
+
 	it("keeps refreshing while a preview topic waits for its upgrade", async () => {
 		vi.useFakeTimers();
 		try {

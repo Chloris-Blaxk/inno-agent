@@ -17,7 +17,7 @@
 
 import { logger } from "../../logger.js";
 import { join } from "node:path";
-import { mkdirSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
 
 /** A single retrievable unit of past conversation. */
 export interface L3Chunk {
@@ -177,7 +177,7 @@ export class L3Store {
 		}
 		if (!DatabaseSync) return null;
 		try {
-			mkdirSync(l3DataDir, { recursive: true });
+			await mkdir(l3DataDir, { recursive: true });
 			const db = new DatabaseSync(join(l3DataDir, "memory.db"));
 			db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
 			return new L3Store(db);

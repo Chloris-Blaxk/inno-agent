@@ -11,7 +11,7 @@ export default defineConfig({
 				extends: true,
 				test: {
 					name: "node",
-					include: ["apps/inno-agent/src/**/*.test.ts", "apps/inno-agent/web/src/**/*.test.ts"],
+					include: ["apps/inno-agent/src/**/*.test.ts", "apps/inno-agent/web/src/**/*.test.ts", "electron/**/*.test.ts"],
 					environment: "node",
 				},
 			},

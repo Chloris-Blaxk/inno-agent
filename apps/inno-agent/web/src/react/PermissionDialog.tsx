@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { ShieldAlert, Terminal, FileText, Wrench, Puzzle } from "lucide-react";
 import type { PendingPermission, PermissionDecisionKind } from "../types/chat.js";
 import { chatStore } from "../stores/chat-store.js";
-import { Button } from "./ui/Button.js";
+import { Button } from "./ui/index.js";
 
 function surfaceIcon(pending: PendingPermission) {
 	if (pending.command) return <Terminal size={14} aria-hidden="true" />;

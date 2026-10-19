@@ -12,7 +12,7 @@ import { ChannelsSettings } from "./ChannelsSettings.js";
 import { McpSettings } from "./McpSettings.js";
 import { AboutSettings } from "./AboutSettings.js";
 import { SmartInputSettings } from "./SmartInputSettings.js";
-import { Tooltip } from "../ui/Tooltip.js";
+import { Tooltip } from "../ui/index.js";
 
 const TABS: { id: SettingsTab; icon: React.ReactNode }[] = [
 	{ id: "general", icon: <Settings2 size={15} /> },

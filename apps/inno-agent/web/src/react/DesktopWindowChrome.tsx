@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ArrowLeft, ArrowRight, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, SquarePen } from "lucide-react";
-import { Tooltip } from "./ui/Tooltip.js";
+import { Tooltip } from "./ui/index.js";
 
 interface DesktopWindowChromeProps {
 	showWorkspaceControl: boolean;
@@ -113,13 +113,15 @@ export function DesktopWindowChrome({
 					{btwControl}
 				</div>
 			) : null}
+			{/* Keep workspace visibility in the upper toolbar so opening and closing
+			    stay in the same place in split and full views. */}
 			{showWorkspaceControl ? (
 				<Tooltip label={workspaceCollapsed ? workspaceOpenLabel : workspaceCollapseLabel} side="bottom">
 					<button
 						type="button"
 						className="inno-window-chrome-button inno-window-chrome-workspace-button"
 						aria-label={workspaceCollapsed ? workspaceOpenLabel : workspaceCollapseLabel}
-						aria-pressed={!workspaceCollapsed}
+						aria-expanded={!workspaceCollapsed}
 						onClick={onToggleWorkspace}
 					>
 						{workspaceCollapsed ? <PanelRightOpen size={15} /> : <PanelRightClose size={15} />}

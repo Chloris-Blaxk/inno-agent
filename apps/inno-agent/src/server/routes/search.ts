@@ -1,29 +1,24 @@
 import type { IncomingMessage as HttpReq, ServerResponse } from "node:http";
-import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
-import { basename, join, relative } from "node:path";
+import { readdir, realpath, stat } from "node:fs/promises";
+import { basename, relative } from "node:path";
 import type { RuntimePaths } from "../../runtime.js";
-import { getL2Memory } from "../../memory/l2/l2-memory.js";
 import { parseFrontmatter } from "../../memory/l2/wiki-maintainer.js";
-import { listWikiPagePaths } from "../../memory/l2/wiki-page-files.js";
-import { getL3Memory } from "../../memory/l3/l3-tools.js";
-import { readJson, readText } from "../../storage/file-store.js";
-import type { SessionMessageSummary, SessionSummary } from "../session-model.js";
-import { isWithin } from "../../utils/path-safety.js";
-import { WORKSPACE_IGNORES, WORKSPACE_TREE_MAX_DEPTH } from "../file-helpers.js";
-import type { SearchCategory, SearchResponse, SearchResult } from "../../shared/search.js";
+import { listWikiPagePathsAsync } from "../../memory/l2/wiki-page-files.js";
+import { readJsonAsync, readTextAsync } from "../../storage/file-store.js";
+import { resolveContainedPathAsync } from "../../utils/path-safety.js";
+import { WORKSPACE_IGNORES } from "../file-helpers.js";
+import type { SearchCategory, SearchResponse, SearchResult, SearchResultCategory } from "../../shared/search.js";
 import type { WorkspaceRegistry } from "../../workspace/workspace-registry.js";
 import { json } from "../http-helpers.js";
+import { parseSessionFileAsync } from "../session-parser.js";
 
 const CATEGORY_ORDER = ["conversation", "workspace", "file", "knowledge"] as const;
 const RESULTS_PER_CATEGORY = 12;
-
-type ParsedSession = { summary: SessionSummary; messages: SessionMessageSummary[] };
 
 export interface SearchRouteContext {
 	dataDir: string;
 	paths: RuntimePaths;
 	workspaceRegistry: WorkspaceRegistry;
-	parseSessionFile: (filePath: string) => ParsedSession | null;
 }
 
 function normalized(value: string): string {
@@ -54,11 +49,10 @@ function rankText(value: string, query: string): number {
 	return target.includes(needle) ? 1 : 0;
 }
 
-function searchWorkspaces(ctx: SearchRouteContext, query: string): SearchResult[] {
-	return ctx.workspaceRegistry.listWorkspaces()
+async function searchWorkspaces(ctx: SearchRouteContext, query: string): Promise<SearchResult[]> {
+	return (await ctx.workspaceRegistry.listWorkspacesAsync())
 		.filter((workspace) => includesQuery(workspace.name, query))
-		.sort((a, b) => rankText(b.name, query) - rankText(a.name, query) || Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
-		.slice(0, RESULTS_PER_CATEGORY)
+		.sort((a, b) => rankText(b.name, query) - rankText(a.name, query) || Date.parse(b.updatedAt) - Date.parse(a.updatedAt) || a.id.localeCompare(b.id))
 		.map((workspace) => ({
 			id: `workspace:${workspace.id}`,
 			category: "workspace",
@@ -70,45 +64,46 @@ function searchWorkspaces(ctx: SearchRouteContext, query: string): SearchResult[
 		}));
 }
 
-function searchWorkspaceFiles(ctx: SearchRouteContext, query: string): SearchResult[] {
+async function searchWorkspaceFiles(ctx: SearchRouteContext, query: string): Promise<SearchResult[]> {
 	const matches: Array<SearchResult & { rank: number }> = [];
-	for (const workspace of ctx.workspaceRegistry.listWorkspaces()) {
-		const root = ctx.workspaceRegistry.resolveWorkspaceDir(workspace.id);
-		if (!root || !existsSync(root)) continue;
+	for (const workspace of await ctx.workspaceRegistry.listWorkspacesAsync()) {
+		const root = await ctx.workspaceRegistry.resolveWorkspaceDirAsync(workspace);
+		if (!root) continue;
 		let realRoot: string;
 		try {
-			realRoot = realpathSync(root);
+			realRoot = await realpath(root);
 		} catch {
 			continue;
 		}
 		const visited = new Set<string>([realRoot]);
-		const walk = (dir: string, depth: number): void => {
-			if (depth > WORKSPACE_TREE_MAX_DEPTH) return;
+		// Search is not limited by the file tree's display depth; containment
+		// checks and the visited set still stop escapes and symlink cycles.
+		const walk = async (dir: string): Promise<void> => {
 			let entries;
 			try {
-				entries = readdirSync(dir, { withFileTypes: true });
+				entries = await readdir(dir, { withFileTypes: true });
 			} catch {
 				return;
 			}
 			for (const entry of entries) {
 				if (WORKSPACE_IGNORES.has(entry.name)) continue;
-				const fullPath = join(dir, entry.name);
-				let stat: ReturnType<typeof statSync>;
+				const fullPath = await resolveContainedPathAsync(root, `${relative(root, dir)}/${entry.name}`.replace(/^\//, ""));
+				if (!fullPath) continue;
+				let info: Awaited<ReturnType<typeof stat>>;
 				let realPath: string;
 				try {
-					stat = statSync(fullPath);
-					realPath = realpathSync(fullPath);
+					info = await stat(fullPath);
+					realPath = await realpath(fullPath);
 				} catch {
 					continue;
 				}
-				if (!isWithin(realRoot, realPath)) continue;
-				if (stat.isDirectory()) {
+				if (info.isDirectory()) {
 					if (visited.has(realPath)) continue;
 					visited.add(realPath);
-					walk(fullPath, depth + 1);
+					await walk(fullPath);
 					continue;
 				}
-				if (!stat.isFile()) continue;
+				if (!info.isFile()) continue;
 				const path = relative(root, fullPath).replaceAll("\\", "/");
 				if (!includesQuery(path, query)) continue;
 				matches.push({
@@ -117,30 +112,33 @@ function searchWorkspaceFiles(ctx: SearchRouteContext, query: string): SearchRes
 					title: basename(path),
 					subtitle: `${workspace.name} · ${path}`,
 					snippet: path,
-					updatedAt: stat.mtime.toISOString(),
+					updatedAt: info.mtime.toISOString(),
 					workspaceId: workspace.id,
 					path,
 					rank: rankText(basename(path), query),
 				});
 			}
 		};
-		walk(root, 0);
+		await walk(root);
 	}
 	return matches
-		.sort((a, b) => b.rank - a.rank || Date.parse(b.updatedAt ?? "") - Date.parse(a.updatedAt ?? ""))
-		.slice(0, RESULTS_PER_CATEGORY)
+		.sort((a, b) => b.rank - a.rank || Date.parse(b.updatedAt ?? "") - Date.parse(a.updatedAt ?? "") || a.id.localeCompare(b.id))
 		.map(({ rank: _rank, ...result }) => result);
 }
 
-function searchKnowledgeFallback(ctx: SearchRouteContext, query: string): SearchResult[] {
+async function searchKnowledge(ctx: SearchRouteContext, query: string): Promise<SearchResult[]> {
+	// Read the current pages so edits, short words and literal punctuation use
+	// the same matching rules as conversations, rather than recall tokenization.
 	const results: SearchResult[] = [];
-	for (const path of listWikiPagePaths(ctx.paths.l2DataDir)) {
+	for (const path of await listWikiPagePathsAsync(ctx.paths.l2DataDir)) {
 		try {
-			const content = readText(join(ctx.paths.l2DataDir, path));
+			const filePath = await resolveContainedPathAsync(ctx.paths.l2DataDir, path);
+			if (!filePath) continue;
+			const content = await readTextAsync(filePath);
 			const { frontmatter, body } = parseFrontmatter(content);
 			const title = frontmatter?.title?.trim() || basename(path, ".md");
 			const tags = frontmatter?.tags ?? [];
-			if (!includesQuery(`${title} ${tags.join(" ")} ${body}`, query)) continue;
+			if (!includesQuery(`${path} ${title} ${tags.join(" ")} ${body}`, query)) continue;
 			results.push({
 				id: `knowledge:${path}`,
 				category: "knowledge",
@@ -152,57 +150,32 @@ function searchKnowledgeFallback(ctx: SearchRouteContext, query: string): Search
 		} catch {
 			// Ignore an unavailable or concurrently removed page.
 		}
-		if (results.length >= RESULTS_PER_CATEGORY) break;
 	}
-	return results;
+	return results.sort((a, b) => rankText(b.title, query) - rankText(a.title, query) || a.id.localeCompare(b.id));
 }
 
-async function searchKnowledge(ctx: SearchRouteContext, query: string): Promise<SearchResult[]> {
-	const memory = getL2Memory(ctx.paths.l2DataDir);
-	await memory.backfill();
-	const store = await memory.getStore();
-	if (!store) return searchKnowledgeFallback(ctx, query);
-	const pages = new Map(store.getAllPages().map((page) => [page.path, page]));
-	return store.searchLexical(query, RESULTS_PER_CATEGORY * 2)
-		.flatMap((hit) => {
-			const page = pages.get(hit.path);
-			if (!page) return [];
-			return [{
-				id: `knowledge:${page.path}`,
-				category: "knowledge" as const,
-				title: page.title,
-				subtitle: page.path,
-				snippet: excerpt(page.body || page.title, query),
-				path: page.path,
-			}];
-		})
-		.slice(0, RESULTS_PER_CATEGORY);
-}
-
-function activeMessageForHit(messages: SessionMessageSummary[], hit: { role: "user" | "assistant"; entryId?: string; ts: number; text: string }): SessionMessageSummary | undefined {
-	if (hit.entryId) return messages.find((message) => message.entryId === hit.entryId && message.role === hit.role);
-	return messages.find((message) => message.role === hit.role
-		&& Math.abs(message.timestamp - hit.ts) < 2000
-		&& message.content.includes(hit.text));
-}
-
-function conversationFallback(ctx: SearchRouteContext, query: string): SearchResult[] {
-	const sessionDir = join(ctx.dataDir, "sessions");
-	const archived = readJson<Record<string, boolean>>(join(sessionDir, "archives.json"), {});
+async function searchConversations(ctx: SearchRouteContext, query: string): Promise<SearchResult[]> {
+	// UI keyword search needs complete, current, literal matches. The recall
+	// index ranks token overlaps and refreshes at turn end; its candidate cap
+	// and stale chunks omitted visible messages (including the query "你好").
+	const sessionDir = ctx.paths.sessionDir;
+	const archivePath = await resolveContainedPathAsync(sessionDir, "archives.json");
+	const archived = archivePath ? await readJsonAsync<Record<string, boolean>>(archivePath, {}) : {};
 	let files: string[];
 	try {
-		files = readdirSync(sessionDir).filter((file) => file.endsWith(".jsonl"));
+		files = (await readdir(sessionDir)).filter((file) => file.endsWith(".jsonl"));
 	} catch {
 		return [];
 	}
-	const results: SearchResult[] = [];
+	const results: Array<SearchResult & { rank: number }> = [];
 	for (const file of files) {
-		const parsed = ctx.parseSessionFile(join(sessionDir, file));
+		const path = await resolveContainedPathAsync(sessionDir, file);
+		const parsed = path ? await parseSessionFileAsync(ctx.dataDir, path) : null;
 		if (!parsed) continue;
-		for (const message of parsed.messages) {
+		for (const [index, message] of parsed.messages.entries()) {
 			if (!includesQuery(message.content, query)) continue;
 			results.push({
-				id: `conversation:${parsed.summary.id}:${message.entryId ?? message.timestamp}`,
+				id: `conversation:${parsed.summary.id}:${message.entryId ?? index}`,
 				category: "conversation",
 				title: parsed.summary.name,
 				subtitle: new Date(message.timestamp).toISOString(),
@@ -212,62 +185,21 @@ function conversationFallback(ctx: SearchRouteContext, query: string): SearchRes
 				role: message.role,
 				sessionId: parsed.summary.id,
 				entryId: message.entryId,
+				rank: rankText(message.content, query),
 			});
 		}
 	}
 	return results
-		.sort((a, b) => rankText(b.snippet, query) - rankText(a.snippet, query) || Date.parse(b.updatedAt ?? "") - Date.parse(a.updatedAt ?? ""))
-		.slice(0, RESULTS_PER_CATEGORY);
+		.sort((a, b) => b.rank - a.rank || Date.parse(b.updatedAt ?? "") - Date.parse(a.updatedAt ?? "") || a.id.localeCompare(b.id))
+		.map(({ rank: _rank, ...result }) => result);
 }
 
-async function searchConversations(ctx: SearchRouteContext, query: string): Promise<SearchResult[]> {
-	const sessionDir = join(ctx.dataDir, "sessions");
-	const memory = getL3Memory(ctx.paths.l3DataDir, sessionDir);
-	const indexedHits = await memory.searchLexical(query, RESULTS_PER_CATEGORY * 8);
-	if (!indexedHits) return conversationFallback(ctx, query);
-	const archived = readJson<Record<string, boolean>>(join(sessionDir, "archives.json"), {});
-	const parsedById = new Map<string, ParsedSession | null>();
-	const results: SearchResult[] = [];
-	const usedMessages = new Set<string>();
-	for (const hit of indexedHits) {
-		let parsed = parsedById.get(hit.sessionId);
-		if (parsed === undefined) {
-			parsed = ctx.parseSessionFile(join(sessionDir, hit.sessionId));
-			parsedById.set(hit.sessionId, parsed);
-		}
-		if (!parsed) continue;
-		const message = activeMessageForHit(parsed.messages, { role: hit.role, entryId: hit.entryId, ts: hit.ts, text: hit.text });
-		if (!message) continue;
-		const messageKey = `${parsed.summary.id}:${message.entryId ?? message.timestamp}`;
-		if (usedMessages.has(messageKey)) continue;
-		usedMessages.add(messageKey);
-		results.push({
-			id: `conversation:${messageKey}`,
-			category: "conversation",
-			title: parsed.summary.name,
-			subtitle: new Date(message.timestamp).toISOString(),
-			snippet: excerpt(message.content, query),
-			updatedAt: parsed.summary.updatedAt,
-			archived: archived[parsed.summary.id] === true,
-			role: message.role,
-			sessionId: parsed.summary.id,
-			entryId: message.entryId,
-		});
-		if (results.length >= RESULTS_PER_CATEGORY) break;
-	}
-	return results;
-}
-
-async function searchCategory(ctx: SearchRouteContext, query: string, category: SearchCategory): Promise<SearchResult[]> {
+async function searchCategory(ctx: SearchRouteContext, query: string, category: SearchResultCategory): Promise<SearchResult[]> {
 	switch (category) {
 		case "conversation": return searchConversations(ctx, query);
 		case "workspace": return searchWorkspaces(ctx, query);
 		case "file": return searchWorkspaceFiles(ctx, query);
 		case "knowledge": return searchKnowledge(ctx, query);
-		case "all": {
-			const results = await Promise.all(CATEGORY_ORDER.map((item) => searchCategory(ctx, query, item)));
-			return results.flat();
-		}
 	}
 }
 
@@ -285,12 +217,22 @@ export async function handleSearchRoutes(
 	const category: SearchCategory = ["all", ...CATEGORY_ORDER].includes(requestedCategory as SearchCategory)
 		? requestedCategory as SearchCategory
 		: "all";
+	const requestedOffset = Number(params.get("offset") ?? 0);
+	const offset = category !== "all" && Number.isSafeInteger(requestedOffset) && requestedOffset > 0 ? requestedOffset : 0;
 	if (!query) {
-		json(res, 200, { results: [] } satisfies SearchResponse);
+		json(res, 200, { results: [], total: 0, counts: {} } satisfies SearchResponse);
 		return true;
 	}
 	try {
-		json(res, 200, { results: await searchCategory(ctx, query, category) } satisfies SearchResponse);
+		const categories = category === "all" ? CATEGORY_ORDER : [category];
+		const groups = await Promise.all(categories.map(async (item) => ({ category: item, results: await searchCategory(ctx, query, item) })));
+		const total = groups.reduce((sum, group) => sum + group.results.length, 0);
+		json(res, 200, {
+			results: groups.flatMap((group) => group.results.slice(offset, offset + RESULTS_PER_CATEGORY)),
+			total,
+			counts: Object.fromEntries(groups.map((group) => [group.category, group.results.length])),
+			nextOffset: category !== "all" && offset + RESULTS_PER_CATEGORY < total ? offset + RESULTS_PER_CATEGORY : undefined,
+		} satisfies SearchResponse);
 	} catch (err) {
 		json(res, 500, { error: err instanceof Error ? err.message : "Search failed" });
 	}

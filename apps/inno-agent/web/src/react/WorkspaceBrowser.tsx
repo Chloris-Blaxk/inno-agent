@@ -16,10 +16,14 @@ import type { WorkspaceFileDetail, WorkspaceFileKind, WorkspaceOfficeFormat } fr
 import { type ArboristNode, toArboristNodes } from "../types/workspace.js";
 import { normalizeMarkdownMath } from "../utils/markdown-math.js";
 import { useStoreSnapshot } from "./hooks.js";
-import { ContextMenu, type ContextMenuItem } from "./ui/ContextMenu.js";
-import { Button } from "./ui/Button.js";
-import { IconButton, Input } from "./ui/index.js";
-import { Tooltip } from "./ui/Tooltip.js";
+import {
+	ContextMenu,
+	type ContextMenuItem,
+	Button,
+	IconButton,
+	Input,
+	Tooltip,
+} from "./ui/index.js";
 import { getLongPressHandlers } from "./ui/long-press.js";
 import { FileName } from "./FileName.js";
 import { buildDragFilePanel, hiddenDragImage } from "./chat/smart-input/drag-utils.js";

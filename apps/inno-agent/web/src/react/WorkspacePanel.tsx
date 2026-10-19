@@ -12,8 +12,11 @@ import { workspaceStore } from "../stores/workspace-store.js";
 import type { WorkspaceTreeNode } from "../types/workspace.js";
 import { ensureWindowForPanel } from "../stores/window-expansion.js";
 import { useStoreSnapshot } from "./hooks.js";
-import { Button } from "./ui/Button.js";
-import { Tooltip } from "./ui/Tooltip.js";
+import {
+	Button,
+	IconButton,
+	Tooltip,
+} from "./ui/index.js";
 import { isDynamicImportError, recoverFromDynamicImportError } from "../utils/dynamic-import-recovery.js";
 
 interface WorkspacePanelProps {
@@ -337,36 +340,34 @@ function WorkspacePanelContent({ mode, width, onModeChange, onWidthChange, onPre
 
 			{/* Panel header — mirrors the design mockup's artifact-panel head:
 			    title + file count on the left, chrome actions on the right. */}
-			<div className={`inno-workspace-header inno-workspace-panel-header flex h-12 shrink-0 items-center justify-between gap-2 border-b border-[var(--inno-border)] bg-[var(--inno-workspace-bg)] px-3.5 ${collapsed ? "hidden" : ""}`}>
+			<div hidden={collapsed} className="inno-workspace-header inno-workspace-panel-header flex h-12 shrink-0 items-center justify-between gap-2 border-b border-[var(--inno-border)] bg-[var(--inno-workspace-bg)] px-3.5">
 				<div className="min-w-0 flex items-baseline gap-1.5">
 					<span className="whitespace-nowrap text-[14.5px] font-semibold text-[var(--inno-text)]">{t("workspace.panelTitle")}</span>
 					<span className="whitespace-nowrap text-[11.5px] text-[var(--inno-text-subtle)]">{t("workspace.fileCount", { count: fileCount })}</span>
 				</div>
 				<div className="inno-workspace-header-actions">
 					{showTerminalToggle ? (
-						<Tooltip label={(terminalOpen ? t("terminal.collapse") : t("terminal.expand")) ?? ""}>
-							<button
-								type="button"
-								className={`inno-workspace-header-button ${terminalOpen ? "is-active" : ""}`}
-								aria-label={(terminalOpen ? t("terminal.collapse") : t("terminal.expand")) ?? ""}
-								onClick={() => terminalStore.setOpen(!terminalOpen)}
-							>
-								<TerminalIcon size={15} strokeWidth={1.8} />
-							</button>
-						</Tooltip>
-					) : null}
-					<Tooltip label={mode === "full" ? (t("workspace.half") ?? "") : (t("workspace.full") ?? "")}>
-						<button
-							type="button"
-							className={`inno-workspace-header-button ${mode === "full" ? "is-active" : ""} max-[960px]:hidden`}
-							aria-label={mode === "full" ? (t("workspace.half") ?? "") : (t("workspace.full") ?? "")}
-							aria-pressed={mode === "full"}
-							onClick={() => onModeChange(mode === "full" ? "half" : "full")}
+						<IconButton
+							size="sm"
+							className={`inno-workspace-header-button ${terminalOpen ? "is-active" : ""}`}
+							title={(terminalOpen ? t("terminal.collapse") : t("terminal.expand")) ?? ""}
+							aria-label={(terminalOpen ? t("terminal.collapse") : t("terminal.expand")) ?? ""}
+							aria-pressed={terminalOpen}
+							onClick={() => terminalStore.setOpen(!terminalOpen)}
 						>
-							{mode === "full" ? <Minimize2 size={15} strokeWidth={1.8} /> : <Maximize2 size={15} strokeWidth={1.8} />}
-						</button>
-					</Tooltip>
-					<span className="inno-workspace-header-toggle-slot" aria-hidden="true" />
+							<TerminalIcon size={15} strokeWidth={1.8} />
+						</IconButton>
+					) : null}
+					<IconButton
+						size="sm"
+						className={`inno-workspace-header-button inno-workspace-header-expand-button ${mode === "full" ? "is-active" : ""}`}
+						title={mode === "full" ? (t("workspace.half") ?? "") : (t("workspace.full") ?? "")}
+						aria-label={mode === "full" ? (t("workspace.half") ?? "") : (t("workspace.full") ?? "")}
+						aria-pressed={mode === "full"}
+						onClick={() => onModeChange(mode === "full" ? "half" : "full")}
+					>
+						{mode === "full" ? <Minimize2 size={15} strokeWidth={1.8} /> : <Maximize2 size={15} strokeWidth={1.8} />}
+					</IconButton>
 				</div>
 			</div>
 

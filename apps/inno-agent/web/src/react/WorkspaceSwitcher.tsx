@@ -1,9 +1,15 @@
+import {
+	useUITransition,
+	Input,
+	SearchableSelect,
+	type SearchableSelectAction,
+	type SearchableSelectSection,
+} from "./ui/index.js";
 import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import { Ban, Check, ChevronDown, Folder, FolderInput, LoaderCircle, Plus, X } from "lucide-react";
 import type { WorkspaceMeta } from "../api/workspaces.js";
-import { Input, SearchableSelect, type SearchableSelectAction, type SearchableSelectSection } from "./ui/index.js";
 
 export type WorkspaceChoice =
 	| { kind: "workspace"; workspaceId: string }
@@ -47,6 +53,7 @@ export function WorkspaceSwitcher({
 	onChange,
 	onImport,
 }: WorkspaceSwitcherProps) {
+	const uiTransition = useUITransition();
 	const { t } = useTranslation();
 	const createInputRef = useRef<HTMLInputElement | null>(null);
 	const importInputRef = useRef<HTMLInputElement | null>(null);
@@ -216,7 +223,7 @@ export function WorkspaceSwitcher({
 							<motion.span
 								className="inline-flex shrink-0"
 								animate={{ rotate: open ? 180 : 0 }}
-								transition={{ duration: 0.16, ease: "easeInOut" }}
+								transition={uiTransition}
 							>
 								<ChevronDown size={13} aria-hidden="true" />
 							</motion.span>
