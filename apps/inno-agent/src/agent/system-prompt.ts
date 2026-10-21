@@ -77,9 +77,12 @@ L2 目录边界（重要，违反会破坏知识库引用）：
 - 如需引导用户查看结果，直接在回复里说明文件路径（相对工作区）即可，例如「已生成 index.html，可在右侧预览面板查看」。
 
 Office 文档编辑（office_* 工具，LibreOffice 引擎）：
-- 用户要求**修改**已有的 Word/Excel/PPT 文档时（改文字、替换内容、插入段落/表格、填单元格、加幻灯片），使用 office_open_document 打开（拿到 docId 和结构大纲）→ office_edit_document 批量执行原子操作（save 或 saveAs 保存）→ office_close_document 关闭。
+- **生成新文档**与**修改已有文档**是两条路径，不要混用：
+  - 生成（用户要"做一份/写一份/生成 xxx 文档/PPT/表格"）：用 office_create_document，模型只产出受限中间格式（docx=受限 HTML、pptx=幻灯片 DSL、xlsx=行数组），绝不要手写 OOXML 或用 pandoc 之类转换器拼装 docx/pptx。
+  - 修改（用户给了一份已有文档要改）：用 office_open_document 打开（拿到 docId 和结构大纲）→ office_edit_document 批量执行原子操作（save 或 saveAs 保存）→ office_close_document 关闭。
+- 生成前如果用户没说清受众、风格、篇幅，先用 ask_user_question 一次性问清（一次问完，不要挤牙膏）；页数多的 PPT 先出大纲让用户确认再逐页展开。
 - 编辑前先根据大纲定位（段落 index、单元格地址、幻灯片 index），不要盲目猜测位置；段落/幻灯片索引可能因插入操作而变化，插入较多时分批执行并重新 inspect。
-- 生成后的文档可用 office_render_document 渲染为 PDF 做视觉校验（如检查排版溢出），再决定是否需要修正。
+- 生成或大幅修改后，用 office_render_document 渲染为 PDF 做版式校验；若当前模型支持图片输入，渲染 format="png" 并 read 查看页面截图，检查文字溢出、错位、空白页，发现问题就修正后重新渲染，直到版式正常再交付。
 - 只读提取文本时仍用 parse_document，不必动用 office 引擎。
 - office_engine_status 可检查引擎是否可用；若报告不可用，把安装指引如实转达给用户。
 

@@ -17,11 +17,10 @@ $DestDir = Join-Path $RepoRoot "vendor/libreoffice/win32-x64"
 $Msi = "LibreOffice_${Version}_Win_x86-64.msi"
 $Url = "https://download.documentfoundation.org/libreoffice/stable/$Version/win/x86_64/$Msi"
 
-if (Test-Path (Join-Path $DestDir "LibreOffice/program/soffice.exe")) {
+$AlreadyStaged = Test-Path (Join-Path $DestDir "LibreOffice/program/soffice.exe")
+if ($AlreadyStaged) {
   Write-Host "already staged: $DestDir/LibreOffice"
-  exit 0
-}
-
+} else {
 $TmpDir = Join-Path $env:TEMP ("lo-stage-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $TmpDir | Out-Null
 try {
@@ -45,4 +44,18 @@ try {
   Write-Host "staged at $DestDir/LibreOffice"
 } finally {
   Remove-Item -Recurse -Force $TmpDir -ErrorAction SilentlyContinue
+}
+
+# Bundle Noto Sans CJK SC (OFL-licensed) so headless rendering always has a
+# CJK fallback; without it, documents referencing East-Asian theme fonts
+# missing on the host export PDFs with CJK glyphs silently dropped.
+$FontsDir = Join-Path $DestDir "LibreOffice/share/fonts/truetype"
+New-Item -ItemType Directory -Path $FontsDir -Force | Out-Null
+foreach ($Font in @("NotoSansSC-Regular.otf", "NotoSansSC-Bold.otf")) {
+  $Target = Join-Path $FontsDir $Font
+  if (-not (Test-Path $Target)) {
+    Write-Host "fetching $Font"
+    curl.exe -fL --retry 3 -o $Target `
+      "https://raw.githubusercontent.com/googlefonts/noto-cjk/main/Sans/SubsetOTF/SC/$Font"
+  }
 }

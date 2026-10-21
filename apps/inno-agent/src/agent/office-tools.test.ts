@@ -59,14 +59,47 @@ afterEach(() => {
 });
 
 describe("office tools", () => {
-	it("registers the five-tool surface", () => {
+	it("registers the six-tool surface", () => {
 		expect(tools.map((t) => t.name)).toEqual([
 			"office_engine_status",
+			"office_create_document",
 			"office_open_document",
 			"office_edit_document",
 			"office_render_document",
 			"office_close_document",
 		]);
+	});
+
+	it("create_document validates format-specific payloads", async () => {
+		const bad1 = await run("office_create_document", { path: "a.docx" });
+		expect(textOf(bad1)).toContain("html");
+		const bad2 = await run("office_create_document", { path: "a.pptx" });
+		expect(textOf(bad2)).toContain("slides");
+		const bad3 = await run("office_create_document", { path: "a.xlsx" });
+		expect(textOf(bad3)).toContain("sheets");
+		const bad4 = await run("office_create_document", { path: "a.txt", html: "<p>x</p>" });
+		expect(textOf(bad4)).toContain("不支持");
+		expect(callMock).not.toHaveBeenCalled();
+	});
+
+	it("create_document passes a constrained spec to the engine", async () => {
+		callMock.mockResolvedValueOnce({ ok: true, result: { created: "/ws/deck.pptx", kind: "slide" } });
+		const res = await run("office_create_document", {
+			path: "deck.pptx",
+			accent: "#FF0000",
+			slides: [{ layout: "title", title: "T" }],
+		});
+		expect(textOf(res)).toContain("已生成 slide 文档");
+		expect(callMock).toHaveBeenCalledWith("create", {
+			path: join(workspace, "deck.pptx"),
+			spec: { slides: [{ layout: "title", title: "T" }], accent: "#FF0000" },
+		});
+	});
+
+	it("create_document rejects targets outside the workspace", async () => {
+		const res = await run("office_create_document", { path: "/tmp/x.docx", html: "<p>x</p>" });
+		expect(textOf(res)).toContain("已拒绝");
+		expect(callMock).not.toHaveBeenCalled();
 	});
 
 	it("reports engine availability", async () => {

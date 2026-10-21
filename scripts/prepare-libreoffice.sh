@@ -33,10 +33,7 @@ DEST_DIR="$REPO_ROOT/vendor/libreoffice/darwin-arm64"
 DMG="LibreOffice_${LO_VERSION}_MacOS_aarch64.dmg"
 URL="https://download.documentfoundation.org/libreoffice/stable/${LO_VERSION}/mac/aarch64/${DMG}"
 
-if [[ -d "$DEST_DIR/LibreOffice.app" ]]; then
-  echo "already staged: $DEST_DIR/LibreOffice.app"
-  exit 0
-fi
+if [[ ! -d "$DEST_DIR/LibreOffice.app" ]]; then
 
 TMP_DIR="$(mktemp -d)"
 trap 'hdiutil detach "$TMP_DIR/mnt" -quiet 2>/dev/null || true; rm -rf "$TMP_DIR"' EXIT
@@ -52,6 +49,10 @@ mkdir -p "$TMP_DIR/mnt" "$DEST_DIR"
 hdiutil attach -readonly -nobrowse -mountpoint "$TMP_DIR/mnt" "$TMP_DIR/$DMG"
 cp -R "$TMP_DIR/mnt/LibreOffice.app" "$DEST_DIR/LibreOffice.app"
 hdiutil detach "$TMP_DIR/mnt" -quiet
+
+else
+  echo "already staged: $DEST_DIR/LibreOffice.app"
+fi
 
 if [[ "$KEEP_LOCALES" -eq 0 ]]; then
   # Strip interface locales we do not ship with; the app UI stays in the
@@ -75,6 +76,20 @@ if [[ -f "$PYBIN" ]]; then
   codesign --sign - --force "$PYBIN"
   echo "re-signed $(basename "$PYBIN") (ad hoc, drops launch constraint)"
 fi
+
+# Bundle Noto Sans CJK SC (OFL-licensed) so headless rendering always has a
+# CJK fallback: without it, documents whose East-Asian theme fonts resolve to
+# names missing on the host (e.g. "ＭＳ 明朝"/"宋体" on a stock macOS/Windows
+# machine) export PDFs with CJK glyphs silently dropped.
+FONTS_DIR="$DEST_DIR/LibreOffice.app/Contents/Resources/fonts/truetype"
+mkdir -p "$FONTS_DIR"
+for font in NotoSansSC-Regular.otf NotoSansSC-Bold.otf; do
+  if [[ ! -f "$FONTS_DIR/$font" ]]; then
+    echo "fetching $font"
+    curl -fL --retry 3 -o "$FONTS_DIR/$font" \
+      "https://raw.githubusercontent.com/googlefonts/noto-cjk/main/Sans/SubsetOTF/SC/$font"
+  fi
+done
 
 # The copy loses its quarantine attribute, but the engine runs headless and
 # unsigned-spawned; strip nothing else. Report the result.

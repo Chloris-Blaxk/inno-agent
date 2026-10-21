@@ -21,6 +21,7 @@
 import argparse
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -68,6 +69,23 @@ PDF_FILTERS = {
 
 def file_url(path):
     return uno.systemPathToFileUrl(os.path.abspath(path))
+
+
+def parse_color(value, default):
+    """'#RRGGBB' or 'RRGGBB' -> UNO color int."""
+    if not value:
+        return default
+    m = re.fullmatch(r"#?([0-9a-fA-F]{6})", str(value).strip())
+    if not m:
+        return default
+    return int(m.group(1), 16)
+
+
+ASIAN_FONT = "Microsoft YaHei" if sys.platform.startswith("win") else "PingFang SC"
+
+# 16:9 slide canvas in 1/100 mm.
+SLIDE_W = 33867
+SLIDE_H = 19050
 
 
 class OfficeEngine:
@@ -202,6 +220,201 @@ class OfficeEngine:
             return {"output": out_path}
         finally:
             self.close(entry_id)
+
+    # ── creation (generation pipeline) ─────────────────────────────────────
+    def create(self, path, spec):
+        """Create a new document from a constrained intermediate form.
+
+        doc:   spec = {"html": "<full html document>"} — imported through the
+               StarWriter HTML filter so headings/lists/tables map to real
+               Word styles.
+        slide: spec = {"accent": "#RRGGBB"?, "slides": [slide-dsl]} — built
+               shape-by-shape on a 16:9 canvas.
+        sheet: spec = {"sheets": [{"name": str, "rows": [[cell...]]}]}
+        """
+        ext = os.path.splitext(path)[1].lower()
+        if ext in (".docx", ".odt"):
+            kind, component = "doc", self._create_doc_from_html(spec.get("html") or "")
+        elif ext in (".pptx", ".odp"):
+            kind, component = "slide", self._create_slide_deck(spec)
+        elif ext in (".xlsx", ".ods"):
+            kind, component = "sheet", self._create_sheet_book(spec)
+        else:
+            raise ValueError(f"unsupported create target extension: {ext}")
+        try:
+            component.storeToURL(
+                file_url(path), (prop("FilterName", SAVE_FILTERS[(kind, ext)]),))
+        finally:
+            component.close(False)
+        return {"created": path, "kind": kind}
+
+    def _create_doc_from_html(self, html):
+        if "<" not in html:
+            raise ValueError("doc creation needs an HTML document in spec.html")
+        fd, tmp_path = tempfile.mkstemp(suffix=".html", prefix="inno-create-")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                fh.write(html)
+            component = self.desktop.loadComponentFromURL(
+                file_url(tmp_path), "_blank", 0,
+                (prop("Hidden", True), prop("FilterName", "HTML (StarWriter)")))
+            if component is None or not component.supportsService(
+                    "com.sun.star.text.TextDocument"):
+                raise RuntimeError("HTML import did not produce a text document")
+            return component
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+    def _create_sheet_book(self, spec):
+        sheets_spec = spec.get("sheets") or []
+        if not sheets_spec:
+            raise ValueError("sheet creation needs spec.sheets")
+        component = self.desktop.loadComponentFromURL(
+            "private:factory/scalc", "_blank", 0, (prop("Hidden", True),))
+        sheets = component.Sheets
+        for i, sheet_spec in enumerate(sheets_spec):
+            name = str(sheet_spec.get("name") or f"Sheet{i + 1}")[:31]
+            if i == 0:
+                sheet = sheets.getByIndex(0)
+                sheet.Name = name
+            else:
+                sheets.insertNewByName(name, i)
+                sheet = sheets.getByName(name)
+            rows = sheet_spec.get("rows") or []
+            for r, row in enumerate(rows):
+                for c, value in enumerate(row):
+                    cell = sheet.getCellByPosition(c, r)
+                    if isinstance(value, (int, float)) and not isinstance(value, bool):
+                        cell.setValue(value)
+                    else:
+                        cell.setString("" if value is None else str(value))
+            # Bold header row when the sheet has one.
+            if rows:
+                header = sheet.getCellRangeByPosition(0, 0, max(len(rows[0]) - 1, 0), 0)
+                header.CharWeight = 150.0  # com.sun.star.awt.FontWeight.BOLD
+                header.CharWeightAsian = 150.0
+        return component
+
+    # slide deck ------------------------------------------------------------
+    def _create_slide_deck(self, spec):
+        slides_spec = spec.get("slides") or []
+        if not slides_spec:
+            raise ValueError("slide creation needs spec.slides")
+        accent = parse_color(spec.get("accent"), 0x2563EB)
+        component = self.desktop.loadComponentFromURL(
+            "private:factory/simpress", "_blank", 0, (prop("Hidden", True),))
+        pages = component.getDrawPages()
+        for i, slide in enumerate(slides_spec):
+            page = pages.getByIndex(0) if i == 0 else pages.insertNewByIndex(i)
+            page.Width = SLIDE_W
+            page.Height = SLIDE_H
+            self._fill_slide(component, page, slide, accent)
+        return component
+
+    def _fill_slide(self, doc, page, slide, accent):
+        layout = slide.get("layout", "bullets")
+        if layout == "title":
+            self._textbox(doc, page, slide.get("title", ""),
+                          x=4000, y=7000, w=SLIDE_W - 8000, h=3000,
+                          size=40, bold=True, color=0x1A1A1A, align=3)  # center
+            if slide.get("subtitle"):
+                self._textbox(doc, page, slide["subtitle"],
+                              x=4000, y=10500, w=SLIDE_W - 8000, h=2000,
+                              size=20, color=0x555555, align=3)
+        elif layout == "section":
+            self._rect(doc, page, 0, 6500, SLIDE_W, 5000, accent)
+            self._textbox(doc, page, slide.get("title", ""),
+                          x=2500, y=7900, w=SLIDE_W - 5000, h=2400,
+                          size=32, bold=True, color=0xFFFFFF, align=3)
+        else:
+            self._slide_header(doc, page, slide.get("title", ""), accent)
+            if layout == "two_column":
+                left = slide.get("left") or []
+                right = slide.get("right") or []
+                self._textbox(doc, page, "\n".join("• " + str(b) for b in left),
+                              x=1800, y=4700, w=14800, h=13000, size=18)
+                self._textbox(doc, page, "\n".join("• " + str(b) for b in right),
+                              x=17200, y=4700, w=14800, h=13000, size=18)
+            else:  # bullets
+                bullets = slide.get("bullets") or []
+                self._textbox(doc, page, "\n".join("• " + str(b) for b in bullets),
+                              x=2200, y=4700, w=SLIDE_W - 4400, h=13000, size=20)
+        if slide.get("notes"):
+            self._set_notes(page, slide["notes"])
+
+    def _slide_header(self, doc, page, title, accent):
+        self._rect(doc, page, 0, 0, SLIDE_W, 320, accent)
+        self._textbox(doc, page, title, x=1800, y=1100, w=SLIDE_W - 3600, h=1800,
+                      size=28, bold=True, color=0x1A1A1A)
+        self._rect(doc, page, 1800, 3300, 6000, 120, accent)
+
+    @staticmethod
+    def _no_border(shape):
+        shape.LineStyle = uno.Enum("com.sun.star.drawing.LineStyle", "NONE")
+
+    def _textbox(self, doc, page, text, x, y, w, h, size=18, bold=False,
+                 color=0x333333, align=0):
+        shape = doc.createInstance("com.sun.star.drawing.TextShape")
+        pt = uno.createUnoStruct("com.sun.star.awt.Point")
+        pt.X, pt.Y = x, y
+        sz = uno.createUnoStruct("com.sun.star.awt.Size")
+        sz.Width, sz.Height = w, h
+        shape.Position = pt
+        shape.Size = sz
+        page.add(shape)
+        shape.FillStyle = uno.Enum("com.sun.star.drawing.FillStyle", "NONE")
+        self._no_border(shape)
+        shape.TextWordWrap = True
+        shape.TextAutoGrowHeight = False
+        shape.setString(str(text))
+        shape.CharHeight = float(size)
+        shape.CharHeightAsian = float(size)
+        shape.CharFontNameAsian = ASIAN_FONT
+        if bold:
+            shape.CharWeight = 150.0       # FontWeight.BOLD
+            shape.CharWeightAsian = 150.0
+        shape.CharColor = color
+        shape.CharColorTheme = -1  # keep the explicit color on OOXML export
+        if align == 3:
+            shape.ParaAdjust = uno.Enum(
+                "com.sun.star.style.ParagraphAdjust", "CENTER")
+        return shape
+
+    def _rect(self, doc, page, x, y, w, h, fill):
+        shape = doc.createInstance("com.sun.star.drawing.RectangleShape")
+        pt = uno.createUnoStruct("com.sun.star.awt.Point")
+        pt.X, pt.Y = x, y
+        sz = uno.createUnoStruct("com.sun.star.awt.Size")
+        sz.Width, sz.Height = w, h
+        shape.Position = pt
+        shape.Size = sz
+        page.add(shape)
+        shape.FillStyle = uno.Enum("com.sun.star.drawing.FillStyle", "SOLID")
+        shape.FillColor = fill
+        # Shapes carry a theme color reference (FillColorTheme=4 → accent1) that
+        # the OOXML export prefers over the direct FillColor, turning every
+        # accent rect into the theme's accent1 (#18A303 green). -1 detaches it
+        # so the pptx keeps the explicit srgb color.
+        shape.FillColorTheme = -1
+        self._no_border(shape)
+        return shape
+
+    def _set_notes(self, page, notes):
+        notes_page = page.getNotesPage()
+        for i in range(notes_page.Count):
+            shape = notes_page.getByIndex(i)
+            try:
+                if shape.supportsService("com.sun.star.drawing.TextShape"):
+                    shape.setString(str(notes))
+                    return
+            except Exception:
+                continue
+
+
+def handle(engine, request):
 
     # ── inspection (schema-on-demand outline) ──────────────────────────────
     def inspect(self, doc_id):
@@ -499,6 +712,8 @@ def handle(engine, request):
         return engine.save(request["docId"], request.get("path"))
     if cmd == "convert":
         return engine.convert(request["path"], request["to"], request["outDir"])
+    if cmd == "create":
+        return engine.create(request["path"], request.get("spec") or {})
     raise ValueError(f"unknown cmd {cmd!r}")
 
 
