@@ -442,10 +442,21 @@ async function startServer(onReady) {
   process.env.INNO_WORKSPACE_DIR = join(homedir(), "Documents");
   process.env.INNO_PORT = String(serverPort);
 
+  // Point the backend at the bundled LibreOffice engine when the installer
+  // shipped one (extraResources -> <resourcesPath>/libreoffice). The backend
+  // resolves it via INNO_BUNDLED_TOOLS_DIR; system installs still work as a
+  // fallback when the app was packaged without the engine.
+  const bundledToolsDir = app.isPackaged ? process.resourcesPath : null;
+
   serverProcess = spawn(process.execPath, [serverScript, "--server", "--port", String(serverPort)], {
     // INNO_DESKTOP marks the desktop (Electron) runtime: gates desktop-only
     // capabilities like computer-use (see plugins.computerUse in config.ts).
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1", INNO_DESKTOP: "1" },
+    env: {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: "1",
+      INNO_DESKTOP: "1",
+      ...(bundledToolsDir ? { INNO_BUNDLED_TOOLS_DIR: bundledToolsDir } : {}),
+    },
     stdio: ["ignore", "pipe", "pipe"],
   });
 

@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Download and stage LibreOffice for bundling into the desktop installers.
+#
+# Layout produced (gitignored):
+#   vendor/libreoffice/darwin-arm64/LibreOffice.app/   (from the official DMG)
+#   vendor/libreoffice/win32-x64/LibreOffice/          (MSI administrative extract;
+#                                                       run scripts/prepare-libreoffice.ps1
+#                                                       on Windows / windows-latest CI)
+#
+# electron-builder picks these up via per-platform extraResources and the
+# backend finds them through INNO_BUNDLED_TOOLS_DIR (see electron/main.js and
+# apps/inno-agent/src/office/engine-locator.ts).
+#
+# Usage:
+#   scripts/prepare-libreoffice.sh [--keep-locales] [--version <lo-version>]
+#
+# Env:
+#   LO_SHA256   optional expected SHA-256 of the DMG; verified when set.
+set -euo pipefail
+
+LO_VERSION="26.8.1"
+KEEP_LOCALES=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --keep-locales) KEEP_LOCALES=1; shift ;;
+    --version) LO_VERSION="$2"; shift 2 ;;
+    *) echo "unknown arg: $1" >&2; exit 2 ;;
+  esac
+done
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DEST_DIR="$REPO_ROOT/vendor/libreoffice/darwin-arm64"
+DMG="LibreOffice_${LO_VERSION}_MacOS_aarch64.dmg"
+URL="https://download.documentfoundation.org/libreoffice/stable/${LO_VERSION}/mac/aarch64/${DMG}"
+
+if [[ -d "$DEST_DIR/LibreOffice.app" ]]; then
+  echo "already staged: $DEST_DIR/LibreOffice.app"
+  exit 0
+fi
+
+TMP_DIR="$(mktemp -d)"
+trap 'hdiutil detach "$TMP_DIR/mnt" -quiet 2>/dev/null || true; rm -rf "$TMP_DIR"' EXIT
+
+echo "downloading $URL"
+curl -fL --retry 3 -o "$TMP_DIR/$DMG" "$URL"
+
+if [[ -n "${LO_SHA256:-}" ]]; then
+  echo "$LO_SHA256  $TMP_DIR/$DMG" | shasum -a 256 -c -
+fi
+
+mkdir -p "$TMP_DIR/mnt" "$DEST_DIR"
+hdiutil attach -readonly -nobrowse -mountpoint "$TMP_DIR/mnt" "$TMP_DIR/$DMG"
+cp -R "$TMP_DIR/mnt/LibreOffice.app" "$DEST_DIR/LibreOffice.app"
+hdiutil detach "$TMP_DIR/mnt" -quiet
+
+if [[ "$KEEP_LOCALES" -eq 0 ]]; then
+  # Strip interface locales we do not ship with; the app UI stays in the
+  # system language for en/zh users, which covers Inno Agent's audience.
+  # This removes well over half of LibreOffice.app's installed size.
+  find "$DEST_DIR/LibreOffice.app/Contents/Resources" -maxdepth 1 -name "*.lproj" \
+    ! -name "en.lproj" ! -name "zh_CN.lproj" ! -name "zh_TW.lproj" ! -name "Base.lproj" \
+    -exec rm -rf {} + 2>/dev/null || true
+fi
+
+# The copy loses its quarantine attribute, but the engine runs headless and
+# unsigned-spawned; strip nothing else. Report the result.
+du -sh "$DEST_DIR/LibreOffice.app"
+echo "staged at $DEST_DIR/LibreOffice.app"

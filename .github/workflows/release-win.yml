@@ -56,6 +56,11 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=4096
         run: npm --workspace inno-agent-web run build
 
+      # ── 6.5 准备随安装包分发的 LibreOffice（vendor/libreoffice/win32-x64）─────
+      - name: Stage bundled LibreOffice
+        shell: pwsh
+        run: ./scripts/prepare-libreoffice.ps1
+
       # ── 7. 打包 Electron（NSIS exe + MSI）───────────────────────────────────
       - name: Package Electron (Windows)
         run: npx electron-builder --win --x64 --publish never

@@ -114,11 +114,15 @@ macOS 上使用系统内置工具，无需额外安装：
 
 **Office 文档解析需要系统级依赖：** liteparse 通过 headless LibreOffice 将 Office 文档（`.docx`、`.xlsx`、`.pptx` 等）转换为 PDF 后再提取文本。
 
+**桌面安装包已内置 LibreOffice，终端用户无需安装。** 打包流程通过 `scripts/prepare-libreoffice.sh`（macOS，从官方 DMG 提取）/ `scripts/prepare-libreoffice.ps1`（Windows，MSI 管理安装解压）将 LibreOffice 暂存到 `vendor/libreoffice/<platform>/`（gitignored），再由 electron-builder 的 `extraResources` 复制进安装包；运行时后端通过 `INNO_BUNDLED_TOOLS_DIR`（Electron 主进程在打包模式下注入）+ `src/office/engine-locator.ts` 解析到内置副本，找不到时才回退系统安装。开发环境或非桌面部署仍需按下表安装：
+
 | 平台 | 安装命令 |
 |------|----------|
 | macOS | `brew install --cask libreoffice` |
 | Ubuntu/Debian | `apt-get install libreoffice` |
 | Windows | `choco install libreoffice-fresh` |
+
+也可用 `INNO_LIBREOFFICE_PATH=/path/to/soffice` 显式指定引擎路径（优先级最高）。
 
 其他格式的依赖通过 npm 包预编译二进制捆绑，无需安装系统级库：
 

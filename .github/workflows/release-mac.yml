@@ -60,6 +60,10 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=4096
         run: npm --workspace inno-agent-web run build
 
+      # ── 6.5 准备随安装包分发的 LibreOffice（vendor/libreoffice/darwin-arm64）───
+      - name: Stage bundled LibreOffice
+        run: bash scripts/prepare-libreoffice.sh
+
       # ── 7. 签名、公证，并验证 DMG 内的实际应用；失败时禁止上传 ───────────────
       - name: Package and verify signed + notarized DMG
         run: npm run electron:package:mac:signed

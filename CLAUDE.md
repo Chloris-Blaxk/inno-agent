@@ -10,7 +10,7 @@ This is an npm workspaces monorepo (Node.js >=20.6.0, ES modules) for **Inno Age
 - `apps/inno-agent/web/` — frontend (React 19 + Lit + Tailwind 4 + Vite), workspace `inno-agent-web`.
 - `electron/` — Electron main process (`main.js` + `loading.html`) for desktop builds.
 - `build/` — desktop app icons (`icon.icns`, `icon.png`, `icon.svg`).
-- `scripts/` — Electron build hooks (`after-pack.cjs`, `build-mac.sh`) and the self-hosted content hub server (`content-hub-server/`).
+- `scripts/` — Electron build hooks (`after-pack.cjs`, `build-mac.sh`), the bundled LibreOffice staging scripts (`prepare-libreoffice.sh` / `prepare-libreoffice.ps1`), and the self-hosted content hub server (`content-hub-server/`).
 - `docs/` — screenshots, use-case guides, and `SYSTEM_DEPENDENCIES.md`.
 - `runtime/` — local runtime state (config, data, skills); gitignored. Mapped to `INNO_*` env vars.
 - `workspace/` — default agent working directory; gitignored.
@@ -19,7 +19,7 @@ PI SDK packages (`@earendil-works/pi-ai`, `@earendil-works/pi-coding-agent`, `@e
 
 Key dependencies: `ws` (WebSocket), `node-pty` (PTY terminal), `cron-parser` (scheduler), `@larksuiteoapi/node-sdk` (Feishu), `typebox` (validation), `undici` (HTTP client), `@juicesharp/rpiv-ask-user-question` (bridges agent `ask_user_question` tool calls to the web UI), `@juicesharp/rpiv-todo` (`todo` task-list tool), `pi-web-access` (`fetch_content`/`get_search_content` URL/GitHub/PDF/YouTube extraction), `pi-subagents` (optional subagent support), `pi-sandbox` (optional OS-level sandboxing), `graphology` + `graphology-communities-louvain` (wiki knowledge graph), `yaml` (YAML parsing), `@llamaindex/liteparse` (document parsing).
 
-Tests run with `npm test` (`vitest run`, root script) and also execute in the release CI. The suite is 101 files (823 tests), including backend chat-stream/trace persistence coverage and web chat trace/timeline coverage, while remaining skewed toward `memory/l2`; coverage for channels/scheduler/terminal/L1/L3 is tracked in `docs/quality-remediation-plan.md`. The TypeScript build (`npm run build`) remains the primary sanity check. No ESLint or Prettier configuration exists.
+Tests run with `npm test` (`vitest run`, root script) and also execute in the release CI. The suite is 102 files (828 tests), including backend chat-stream/trace persistence coverage and web chat trace/timeline coverage, while remaining skewed toward `memory/l2`; coverage for channels/scheduler/terminal/L1/L3 is tracked in `docs/quality-remediation-plan.md`. The TypeScript build (`npm run build`) remains the primary sanity check. No ESLint or Prettier configuration exists.
 
 When a PR changes the test count, the size of `server.ts`, or other structural facts stated in this file, update this file in the same PR — AI agents read it as ground truth.
 
@@ -128,6 +128,7 @@ npm run electron:build:win    # Package Windows NSIS + MSI (x64)
 
 - **`scripts/after-pack.cjs`** — electron-builder hook that fixes `node-pty`'s `spawn-helper` executable permissions after packaging. Without this, the in-app terminal fails on macOS/Linux. Declared in `package.json`'s `build.afterPack`.
 - **`scripts/build-mac.sh`** — local macOS packaging script (alternative to CI). Supports `--bump patch|minor|major` for version increment and `--open` to open the output DMG.
+- **`scripts/prepare-libreoffice.sh` / `scripts/prepare-libreoffice.ps1`** — stage a bundled LibreOffice into `vendor/libreoffice/{darwin-arm64,win32-x64}/` (gitignored) from the official DMG / MSI administrative extract. Both release workflows run the matching script before packaging, and electron-builder's per-platform `extraResources` copies it to `<resourcesPath>/libreoffice`. At runtime `electron/main.js` exports `INNO_BUNDLED_TOOLS_DIR=process.resourcesPath` (packaged only), and `apps/inno-agent/src/office/engine-locator.ts` resolves `soffice` in order: `INNO_LIBREOFFICE_PATH` env → bundled copy → system install → PATH. Desktop installers therefore ship with Office document parsing (liteparse) working out of the box; dev/server deployments still need a system LibreOffice.
 
 ### CI/CD
 
