@@ -27,7 +27,7 @@ import "@earendil-works/pi-web-ui";
 // critical path and only download when an office file is actually opened.
 const PptxPreview = lazy(() => import("./office/PptxPreview.js"));
 const DocxPane = lazy(() => import("./office/DocxPane.js"));
-const XlsxPreview = lazy(() => import("./office/XlsxPreview.js"));
+const XlsxPane = lazy(() => import("./office/XlsxPane.js"));
 
 const MAX_STREAMING_MARKDOWN_FORMAT_CHARS = 160_000;
 type PreviewFileHandler = (minimumWidth: number) => void | Promise<void>;
@@ -429,7 +429,7 @@ function Preview({ file, isLoading }: { file: WorkspaceFileDetail; isLoading: bo
 		);
 		if (fmt === "pptx") return <Suspense fallback={fallback}><PptxPreview file={file} /></Suspense>;
 		if (fmt === "docx") return <Suspense fallback={fallback}><DocxPane file={file} /></Suspense>;
-		if (fmt === "xlsx") return <Suspense fallback={fallback}><XlsxPreview file={file} /></Suspense>;
+		if (fmt === "xlsx") return <Suspense fallback={fallback}><XlsxPane file={file} /></Suspense>;
 		return <OfficePreview file={file} />;
 	}
 	if (file.kind === "binary") {
