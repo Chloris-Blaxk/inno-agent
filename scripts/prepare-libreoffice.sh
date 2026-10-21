@@ -62,6 +62,20 @@ if [[ "$KEEP_LOCALES" -eq 0 ]]; then
     -exec rm -rf {} + 2>/dev/null || true
 fi
 
+# The Document Foundation signs the bundled LibreOfficePython launcher with a
+# macOS launch constraint: only LibreOffice's own processes may exec it, so a
+# direct spawn from our backend dies with SIGKILL ("Code Signature Invalid /
+# Launch Constraint Violation"). Re-signing the launcher ad hoc drops that
+# constraint. The signed CI build re-signs every bundled Mach-O with our own
+# Developer ID at packaging time, which has the same effect — this ad hoc
+# signature only matters for local/dev use of the staged tree.
+PYBIN="$DEST_DIR/LibreOffice.app/Contents/Frameworks/LibreOfficePython.framework/Versions/Current/Resources/Python.app/Contents/MacOS/LibreOfficePython"
+if [[ -f "$PYBIN" ]]; then
+  codesign --remove-signature "$PYBIN" 2>/dev/null || true
+  codesign --sign - --force "$PYBIN"
+  echo "re-signed $(basename "$PYBIN") (ad hoc, drops launch constraint)"
+fi
+
 # The copy loses its quarantine attribute, but the engine runs headless and
 # unsigned-spawned; strip nothing else. Report the result.
 du -sh "$DEST_DIR/LibreOffice.app"

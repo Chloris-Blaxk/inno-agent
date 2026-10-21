@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { delimiter, dirname, join } from "node:path";
 import { execFileSync } from "node:child_process";
 
@@ -141,4 +141,43 @@ export function prependLibreOfficeToPath(): LibreOfficeLocation | null {
 		process.env.PATH = [dir, ...entries].join(delimiter);
 	}
 	return found;
+}
+
+/**
+ * Locate the python interpreter that can drive UNO for a given soffice
+ * binary. The UNO bridge must run under LibreOffice's bundled python (it is
+ * the only interpreter with a matching pyuno):
+ *   - macOS:  <LibreOffice.app>/Contents/Resources/python (wrapper script
+ *     that sets PYTHONHOME/PYTHONPATH and execs the framework interpreter)
+ *   - win32:  <program>/python.exe next to soffice.exe
+ *   - linux:  <program>/python when present (distro packages usually ship
+ *     python3-uno for the system python instead — returns null there and the
+ *     caller may fall back to system python3 with PYTHONPATH set)
+ *
+ * macOS caveat: the bundled interpreter binary is signed with a launch
+ * constraint and can only be exec'd from LibreOffice's own processes until
+ * re-signed — scripts/prepare-libreoffice.sh re-signs it ad hoc at staging
+ * time. A user's own /Applications install is NOT re-signed, so the bridge
+ * may fail to spawn against `source: "system"` engines on macOS.
+ */
+export function findOfficePython(sofficePath: string): string | null {
+	const realSoffice = (() => {
+		try {
+			return realpathSync(sofficePath);
+		} catch {
+			return sofficePath;
+		}
+	})();
+	const dir = dirname(realSoffice);
+	const candidates: string[] =
+		process.platform === "darwin"
+			// MacOS/soffice -> Contents/Resources/python
+			? [join(dir, "..", "Resources", "python")]
+			: process.platform === "win32"
+				? [join(dir, "python.exe")]
+				: [join(dir, "python"), join(dir, "python3")];
+	for (const candidate of candidates) {
+		if (existsSync(candidate)) return candidate;
+	}
+	return null;
 }

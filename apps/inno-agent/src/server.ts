@@ -78,6 +78,7 @@ import {
 import { logger } from "./logger.js";
 import { applyRuntimeEnvironment, parseRuntimeArgs, resolveRuntimePaths } from "./runtime.js";
 import { createGracefulShutdownHandler, installProcessFallbacks } from "./utils/process-fallback.js";
+import { killSharedUnoSidecar } from "./office/uno-sidecar.js";
 import { questionBridge } from "./agent/question-bridge.js";
 import { permissionBridge } from "./agent/permission-bridge.js";
 import { streamRegistry } from "./chat/stream-registry.js";
@@ -1754,6 +1755,7 @@ installProcessFallbacks({
 const gracefulShutdown = createGracefulShutdownHandler({
 	server,
 	wss,
+	cleanup: () => killSharedUnoSidecar(),
 	exit: (code) => process.exit(code),
 });
 process.on("SIGTERM", gracefulShutdown);

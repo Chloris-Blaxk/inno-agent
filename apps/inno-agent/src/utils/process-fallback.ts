@@ -30,6 +30,8 @@ export interface GracefulShutdownOptions {
 	};
 	exit: (code: number) => void;
 	exitTimeoutMs?: number;
+	/** Synchronous best-effort cleanup (child processes) before servers close. */
+	cleanup?: () => void;
 }
 
 let installed = false;
@@ -47,6 +49,8 @@ export function createGracefulShutdownHandler(
 			return;
 		}
 		state.shuttingDown = true;
+
+		try { options.cleanup?.(); } catch { /* best effort */ }
 
 		// SSE can keep server.close() pending forever. Leave two seconds before
 		// Docker's default ten-second stop deadline rather than waiting for it.
