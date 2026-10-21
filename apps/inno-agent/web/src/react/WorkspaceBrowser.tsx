@@ -26,7 +26,7 @@ import "@earendil-works/pi-web-ui";
 // Heavy office renderers are lazy-loaded so docx-preview / xlsx stay off the
 // critical path and only download when an office file is actually opened.
 const PptxPreview = lazy(() => import("./office/PptxPreview.js"));
-const DocxPreview = lazy(() => import("./office/DocxPreview.js"));
+const DocxPane = lazy(() => import("./office/DocxPane.js"));
 const XlsxPreview = lazy(() => import("./office/XlsxPreview.js"));
 
 const MAX_STREAMING_MARKDOWN_FORMAT_CHARS = 160_000;
@@ -428,7 +428,7 @@ function Preview({ file, isLoading }: { file: WorkspaceFileDetail; isLoading: bo
 			</div>
 		);
 		if (fmt === "pptx") return <Suspense fallback={fallback}><PptxPreview file={file} /></Suspense>;
-		if (fmt === "docx") return <Suspense fallback={fallback}><DocxPreview file={file} /></Suspense>;
+		if (fmt === "docx") return <Suspense fallback={fallback}><DocxPane file={file} /></Suspense>;
 		if (fmt === "xlsx") return <Suspense fallback={fallback}><XlsxPreview file={file} /></Suspense>;
 		return <OfficePreview file={file} />;
 	}

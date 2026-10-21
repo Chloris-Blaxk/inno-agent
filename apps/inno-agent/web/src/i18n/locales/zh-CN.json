@@ -1364,5 +1364,11 @@
 	},
 	"welcome": {
 		"greeting": "今天想学点什么？"
+	},
+	"office": {
+		"previewMode": "预览",
+		"editMode": "编辑",
+		"editingHint": "编辑模式 — 修改需点击保存后生效",
+		"commentsInPreview": "批注在预览模式下可用"
 	}
 }

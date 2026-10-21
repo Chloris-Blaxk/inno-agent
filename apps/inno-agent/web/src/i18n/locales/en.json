@@ -1364,5 +1364,11 @@
 	},
 	"welcome": {
 		"greeting": "What would you like to learn today?"
+	},
+	"office": {
+		"previewMode": "Preview",
+		"editMode": "Edit",
+		"editingHint": "Editing mode — changes apply after you click Save",
+		"commentsInPreview": "Comments are available in Preview mode"
 	}
 }

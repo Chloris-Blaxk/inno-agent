@@ -495,6 +495,25 @@ describe("server smoke", () => {
 		expect(res.status).toBe(404);
 	});
 
+	it("PUT /api/workspace/file writes binary bytes from contentBase64", async () => {
+		const tree = await api("/api/workspace/tree");
+		const { root } = (await tree.json()) as { root: string };
+		const name = `bin-put-${Date.now()}.bin`;
+		writeFileSync(join(root, name), "placeholder");
+		try {
+			const bytes = Buffer.from([0x00, 0x01, 0x02, 0xff, 0xfe]);
+			const res = await fetch(`http://127.0.0.1:${port}/api/workspace/file`, {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ path: name, contentBase64: bytes.toString("base64") }),
+			});
+			expect(res.status).toBe(200);
+			expect(readFileSync(join(root, name))).toEqual(bytes);
+		} finally {
+			rmSync(join(root, name), { force: true });
+		}
+	});
+
 	it("GET /api/workspace/file rejects symlinks escaping the workspace (issue #162)", async () => {
 		const tree = await api("/api/workspace/tree");
 		const { root } = (await tree.json()) as { root: string };

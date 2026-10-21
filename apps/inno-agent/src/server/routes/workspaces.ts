@@ -554,6 +554,8 @@ export async function handleWorkspacesRoutes(
 		const body = (await readBody(req)) as Record<string, unknown>;
 		const wsId = workspaceIdFromBody(body);
 		const filePath = typeof body.path === "string" ? body.path.trim() : "";
+		// Binary writes (WYSIWYG office editors) send base64; text edits send content.
+		const contentBase64 = typeof body.contentBase64 === "string" ? body.contentBase64 : null;
 		const content = typeof body.content === "string" ? body.content : "";
 		if (!filePath) { json(res, 400, { error: "Missing path" }); return true; }
 		const fullPath = safeWorkspacePath(wsId, filePath);
@@ -561,7 +563,17 @@ export async function handleWorkspacesRoutes(
 		if (!existsSync(fullPath) || !statSync(fullPath).isFile()) {
 			json(res, 404, { error: "File not found" }); return true;
 		}
-		writeFileSync(fullPath, content, "utf-8");
+		if (contentBase64 !== null) {
+			let bytes: Buffer;
+			try {
+				bytes = Buffer.from(contentBase64, "base64");
+			} catch {
+				json(res, 400, { error: "Invalid base64 content" }); return true;
+			}
+			writeFileSync(fullPath, bytes);
+		} else {
+			writeFileSync(fullPath, content, "utf-8");
+		}
 		const stat = statSync(fullPath);
 		json(res, 200, { path: filePath, saved: true, size: stat.size, updatedAt: stat.mtime.toISOString() });
 		return true;
