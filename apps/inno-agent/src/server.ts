@@ -60,6 +60,7 @@ import { handlePracticeRoutes } from "./server/routes/practice.js";
 import { handleChatRoutes } from "./server/routes/chat.js";
 import { handleCommandsRoutes } from "./server/routes/commands.js";
 import { handleBtwRoutes } from "./server/routes/btw.js";
+import { handleCommentsRoutes } from "./server/routes/comments.js";
 import { mergeSessionAgentCommands } from "./server/agent-command-store.js";
 import { recordToolWorkspaceActivity } from "./server/workspace-activity-store.js";
 import { stripUploadedImagesPrefix } from "./server/upload-prefix.js";
@@ -1497,6 +1498,11 @@ const { dispatch: dispatchRoutes } = createRouteDispatcher({
 	// --- Btw side-question API (extracted to server/routes/btw.ts) ---
 	btw: (req, res, method, url) => handleBtwRoutes(req, res, method, url, {
 		dataDir, sessionFileFromId, parseSessionFile,
+	}),
+
+	// --- Anchored document comment API (extracted to server/routes/comments.ts) ---
+	comments: (req, res, method, url) => handleCommentsRoutes(req, res, method, url, {
+		dataDir, workspaceRegistry,
 	}),
 
 	// --- Chat API (extracted to server/routes/chat.ts) ---

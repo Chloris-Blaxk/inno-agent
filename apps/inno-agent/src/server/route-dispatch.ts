@@ -4,7 +4,7 @@ type RouteHandler = (req: IncomingMessage, res: ServerResponse, method: string, 
 
 export type RouteHandlers = Record<
 	| "checkins" | "jobs" | "channels" | "skills" | "sessions" | "wiki" | "learner"
-	| "workspaces" | "presets" | "practice" | "settings" | "commands" | "btw" | "chat",
+	| "workspaces" | "presets" | "practice" | "settings" | "commands" | "btw" | "comments" | "chat",
 	RouteHandler
 >;
 
@@ -33,6 +33,7 @@ export function createRouteDispatcher(handlers: RouteHandlers) {
 		{ prefix: "/api/mcp", handler: handlers.settings },
 		{ prefix: "/api/commands", handler: handlers.commands },
 		{ prefix: "/api/btw", handler: handlers.btw },
+		{ prefix: "/api/comments", handler: handlers.comments },
 		{ prefix: "/api/chat", handler: handlers.chat },
 	];
 	const byPrefix = new Map<string, RouteHandler[]>();

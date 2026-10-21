@@ -2124,6 +2124,20 @@ inno-workspace-panel textarea {
 	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
+/* Anchored comment highlights inside the rendered document. */
+mark.inno-comment-anchor {
+	background: color-mix(in srgb, var(--inno-accent) 22%, transparent);
+	color: inherit;
+	border-radius: 2px;
+	padding: 0 1px;
+	cursor: pointer;
+}
+
+mark.inno-comment-anchor-active {
+	background: color-mix(in srgb, var(--inno-accent) 45%, transparent);
+	outline: 1px solid var(--inno-accent);
+}
+
 .inno-icon-button {
 	display: inline-flex;
 	align-items: center;
