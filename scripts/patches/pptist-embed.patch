@@ -1,0 +1,108 @@
+diff --git a/src/embed.ts b/src/embed.ts
+new file mode 100644
+index 0000000..889acb0
+--- /dev/null
++++ b/src/embed.ts
+@@ -0,0 +1,66 @@
++/**
++ * Embed bridge for Inno Agent (patched into vendored PPTist).
++ *
++ * When the URL carries ?embed=1 the app talks postMessage with the host page:
++ *   host → iframe  { type: 'pptist:load', buffer: ArrayBuffer, name }   load pptx bytes
++ *   host → iframe  { type: 'pptist:export' }                            export current deck
++ *   iframe → host  { type: 'pptist:ready' }                             sent once on boot
++ *   iframe → host  { type: 'pptist:loaded' }                            import finished
++ *   iframe → host  { type: 'pptist:exported', buffer: ArrayBuffer }     pptx bytes
++ * All traffic is same-origin (the bundle is served from the same app).
++ */
++import useImport from '@/hooks/useImport'
++import useExport from '@/hooks/useExport'
++import { useSlidesStore } from '@/store'
++import { storeToRefs } from 'pinia'
++
++declare global {
++  interface Window {
++    __pptistCaptureExport?: (blob: Blob) => void
++  }
++}
++
++export function setupEmbed() {
++  const params = new URLSearchParams(location.search)
++  if (!params.has('embed')) return
++
++  // Host origin: explicit parentOrigin param (cross-origin embedding/tests),
++  // otherwise same-origin.
++  const origin = params.get('parentOrigin') || window.location.origin
++
++  window.addEventListener('message', (e) => {
++    if (e.origin !== origin && e.origin !== window.location.origin) return
++    const data = e.data
++    if (!data || typeof data !== 'object') return
++
++    if (data.type === 'pptist:load' && data.buffer) {
++      const file = new File([data.buffer], data.name || 'deck.pptx', {
++        type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
++      })
++      const { importPPTXFile } = useImport()
++      importPPTXFile([file], { cover: true })
++      // The importer is async but uninstrumented; tell the host it can stop
++      // showing the spinner once the store reflects slides.
++      const slidesStore = useSlidesStore()
++      const stop = slidesStore.$subscribe(() => {
++        window.parent.postMessage({ type: 'pptist:loaded' }, origin)
++        stop()
++      })
++    }
++
++    if (data.type === 'pptist:export') {
++      const slidesStore = useSlidesStore()
++      const { slides } = storeToRefs(slidesStore)
++      const { exportPPTX } = useExport()
++      window.__pptistCaptureExport = (blob: Blob) => {
++        window.__pptistCaptureExport = undefined
++        blob.arrayBuffer().then((buffer) => {
++          window.parent.postMessage({ type: 'pptist:exported', buffer }, origin, [buffer])
++        })
++      }
++      exportPPTX(slides.value, true, false)
++    }
++  })
++
++  window.parent.postMessage({ type: 'pptist:ready' }, origin)
++}
+diff --git a/src/hooks/useExport.ts b/src/hooks/useExport.ts
+index 4c74ffb..0570f02 100644
+--- a/src/hooks/useExport.ts
++++ b/src/hooks/useExport.ts
+@@ -999,6 +999,16 @@ export default () => {
+     }
+ 
+     setTimeout(() => {
++      // Inno Agent embed bridge: hand the bytes to the host page instead of
++      // triggering a browser download when a capture hook is installed.
++      const capture = (window as unknown as { __pptistCaptureExport?: (blob: Blob) => void }).__pptistCaptureExport
++      if (capture) {
++        pptx.write({ outputType: 'blob' }).then(data => {
++          exporting.value = false
++          capture(data as Blob)
++        }).catch(() => { exporting.value = false })
++        return
++      }
+       pptx.writeFile({ fileName: `${title.value}.pptx` }).then(() => exporting.value = false).catch(() => {
+         exporting.value = false
+         message.error('导出失败')
+diff --git a/src/main.ts b/src/main.ts
+index c18fad9..cb7065d 100644
+--- a/src/main.ts
++++ b/src/main.ts
+@@ -9,8 +9,10 @@ import '@/assets/styles/global.scss'
+ import '@/assets/styles/font.scss'
+ 
+ import Directive from '@/directive'
++import { setupEmbed } from './embed'
+ 
+ const app = createApp(App)
+ app.use(Directive)
+ app.use(createPinia())
+ app.mount('#app')
++setupEmbed()

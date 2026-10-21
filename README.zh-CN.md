@@ -239,6 +239,10 @@ npm run server
 
 [MIT](./LICENSE)。本项目依赖 Pi SDK(`@earendil-works/pi-*`,作者 Mario Zechner),同为 MIT 许可,经 npm 引入。
 
+### 第三方许可
+
+预览侧 WYSIWYG 文档编辑器包含两个 **AGPL-3.0** 组件:[SuperDoc](https://github.com/Harbour-Enterprises/SuperDoc)(docx 编辑)与 [PPTist](https://github.com/pipipi-pikachu/PPTist)(pptx 编辑,经 `scripts/prepare-pptist.sh` 暂存 vendored 构建)。因此分发版 Web UI 对这两个组件承担 AGPL 义务;其源码与我们的修改在本仓库可得(SuperDoc 经 npm 引入,PPTist 为钉住的 upstream commit 加 `scripts/patches/pptist-embed.patch`)。xlsx 编辑器 [Univer](https://github.com/dream-num/univer) 为 Apache-2.0。
+
 ## 引用
 
 ```bibtex

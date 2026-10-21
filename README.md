@@ -271,6 +271,10 @@ Join the WeChat user group to ask questions, share use cases, and follow updates
 
 [MIT](./LICENSE). This project depends on the Pi SDK (`@earendil-works/pi-*` packages by Mario Zechner), also MIT-licensed and consumed via npm.
 
+### Third-party licenses
+
+The preview-side WYSIWYG document editors include two **AGPL-3.0** components: [SuperDoc](https://github.com/Harbour-Enterprises/SuperDoc) (docx editing) and [PPTist](https://github.com/pipipi-pikachu/PPTist) (pptx editing, vendored build staged by `scripts/prepare-pptist.sh`). Distributed builds of the web UI therefore carry AGPL obligations for those components; their sources and our modifications are available in this repository (SuperDoc via npm, PPTist via the pinned upstream commit plus `scripts/patches/pptist-embed.patch`). The xlsx editor ([Univer](https://github.com/dream-num/univer)) is Apache-2.0.
+
 ## Citation
 
 ```bibtex

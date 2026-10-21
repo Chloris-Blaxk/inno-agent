@@ -19,7 +19,7 @@ PI SDK packages (`@earendil-works/pi-ai`, `@earendil-works/pi-coding-agent`, `@e
 
 Key dependencies: `ws` (WebSocket), `node-pty` (PTY terminal), `cron-parser` (scheduler), `@larksuiteoapi/node-sdk` (Feishu), `typebox` (validation), `undici` (HTTP client), `@juicesharp/rpiv-ask-user-question` (bridges agent `ask_user_question` tool calls to the web UI), `@juicesharp/rpiv-todo` (`todo` task-list tool), `pi-web-access` (`fetch_content`/`get_search_content` URL/GitHub/PDF/YouTube extraction), `pi-subagents` (optional subagent support), `pi-sandbox` (optional OS-level sandboxing), `graphology` + `graphology-communities-louvain` (wiki knowledge graph), `yaml` (YAML parsing), `@llamaindex/liteparse` (document parsing).
 
-Tests run with `npm test` (`vitest run`, root script) and also execute in the release CI. The suite is 104 files (844 tests), including backend chat-stream/trace persistence coverage and web chat trace/timeline coverage, while remaining skewed toward `memory/l2`; coverage for channels/scheduler/terminal/L1/L3 is tracked in `docs/quality-remediation-plan.md`. The TypeScript build (`npm run build`) remains the primary sanity check. No ESLint or Prettier configuration exists.
+Tests run with `npm test` (`vitest run`, root script) and also execute in the release CI. The suite is 105 files (849 tests), including backend chat-stream/trace persistence coverage and web chat trace/timeline coverage, while remaining skewed toward `memory/l2`; coverage for channels/scheduler/terminal/L1/L3 is tracked in `docs/quality-remediation-plan.md`. The TypeScript build (`npm run build`) remains the primary sanity check. No ESLint or Prettier configuration exists.
 
 When a PR changes the test count, the size of `server.ts`, or other structural facts stated in this file, update this file in the same PR — AI agents read it as ground truth.
 
@@ -128,6 +128,7 @@ npm run electron:build:win    # Package Windows NSIS + MSI (x64)
 
 - **`scripts/after-pack.cjs`** — electron-builder hook that fixes `node-pty`'s `spawn-helper` executable permissions after packaging. Without this, the in-app terminal fails on macOS/Linux. Declared in `package.json`'s `build.afterPack`.
 - **`scripts/build-mac.sh`** — local macOS packaging script (alternative to CI). Supports `--bump patch|minor|major` for version increment and `--open` to open the output DMG.
+- **`scripts/prepare-pptist.sh`** — regenerates the vendored PPTist bundle (pinned upstream commit + `scripts/patches/pptist-embed.patch` postMessage bridge) staged into `apps/inno-agent/web/public/pptist/` for the preview pane's pptx edit mode. PPTist is AGPL-3.0; see README "Third-party licenses".
 - **`scripts/prepare-libreoffice.sh` / `scripts/prepare-libreoffice.ps1`** — stage a bundled LibreOffice into `vendor/libreoffice/{darwin-arm64,win32-x64}/` (gitignored) from the official DMG / MSI administrative extract. Both release workflows run the matching script before packaging, and electron-builder's per-platform `extraResources` copies it to `<resourcesPath>/libreoffice`. At runtime `electron/main.js` exports `INNO_BUNDLED_TOOLS_DIR=process.resourcesPath` (packaged only), and `apps/inno-agent/src/office/engine-locator.ts` resolves `soffice` in order: `INNO_LIBREOFFICE_PATH` env → bundled copy → system install → PATH. Desktop installers therefore ship with Office document parsing (liteparse) working out of the box; dev/server deployments still need a system LibreOffice.
 
 ### CI/CD
@@ -348,6 +349,8 @@ Hybrid React + Lit. Mounts in `web/src/main.tsx` → `react/App.tsx`. State live
 **Theme system**: Four themes (light, warm, ocean, innospark) defined in `web/src/themes.css` via CSS custom properties. Theme preference is persisted to both `localStorage` (`inno.theme`) and the backend (`PATCH /api/settings/theme`). Managed by `web/src/stores/theme-store.ts`.
 
 Key UI dependencies: `cytoscape` + `cytoscape-cola` + `cytoscape-cose-bilkent` (wiki graph), `@xterm/xterm` + `@xterm/addon-fit` + `@xterm/addon-web-links` (in-browser terminal), `@uiw/react-codemirror` + 10+ `@codemirror/lang-*` packages (code editor), `@uiw/react-md-editor` (markdown editor), `motion` (animations), `lucide-react` (icons), `qrcode.react` (WeChat login QR), `react-arborist` (tree view), `highlight.js` (syntax highlighting), `@mariozechner/mini-lit` (mini Lit framework for legacy components).
+
+**Preview-pane office editors**: docx/xlsx/pptx files get a Preview/Edit toggle (`web/src/react/office/*Pane.tsx`). Edit mode mounts SuperDoc (AGPL; docx), Univer (Apache-2.0; xlsx, via a SheetJS ↔ Univer snapshot converter in `univer-xlsx.ts`) or an iframe-embedded prebuilt PPTist bundle (AGPL; pptx, postMessage bridge). All three save through the binary write path `contentBase64` on `PUT /api/workspace/file`; the docx comment threads (批注) live in preview mode only.
 
 **i18n**: The UI supports Chinese (`zh-CN`, default) and English (`en`), managed by `i18next` + `react-i18next` in `web/src/i18n/`. Locale is persisted to `localStorage` under `inno.locale`.
 
