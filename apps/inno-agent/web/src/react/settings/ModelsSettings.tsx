@@ -1,3 +1,5 @@
+import { ThinkingLevelField } from "./ThinkingLevelField.js";
+import type { InnoThinkingLevel } from "../../types/settings.js";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Trash2, Pencil, X, ChevronDown, ChevronRight } from "lucide-react";
@@ -16,6 +18,7 @@ const inputCls = "w-full rounded-md border border-[var(--inno-border)] bg-[var(-
 const labelCls = "mb-0.5 block text-xs text-[var(--inno-text-muted)]";
 
 interface ModelEditFormState {
+	thinkingLevel?: InnoThinkingLevel;
 	baseUrl: string;
 	apiKey: string;
 	api: string;
@@ -48,6 +51,7 @@ function ModelEditForm({ model, settings, onClose }: {
 		contextWindow: String(model.contextWindow),
 		maxTokens: String(model.maxTokens),
 		reasoning: model.reasoning,
+		thinkingLevel: model.thinkingLevel,
 		supportsImages: model.input.includes("image"),
 		authHeader: provider?.authHeader === true,
 		bypassProxy: provider?.bypassProxy === true,
@@ -71,6 +75,7 @@ function ModelEditForm({ model, settings, onClose }: {
 				id: form.modelId.trim(),
 				name: form.modelName.trim() || form.modelId.trim(),
 				reasoning: form.reasoning,
+				thinkingLevel: form.thinkingLevel,
 				input: form.supportsImages ? ["text", "image"] : ["text"],
 				contextWindow: Math.trunc(contextWindow),
 				maxTokens: Math.trunc(maxTokens),
@@ -155,6 +160,7 @@ function ModelEditForm({ model, settings, onClose }: {
 						<label className="flex items-center gap-1.5"><input type="checkbox" className={checkboxCls} checked={form.bypassProxy} onChange={(e) => setForm({ ...form, bypassProxy: e.target.checked })} /> {t("settings.form.bypassProxy")}</label>
 					</div>
 					<p className="text-xs text-[var(--inno-text-subtle)]">{t("settings.form.supportsImagesHint")}</p>
+					<ThinkingLevelField enabled={form.reasoning} value={form.thinkingLevel} onChange={thinkingLevel => setForm({ ...form, thinkingLevel })} />
 				</div>
 			)}
 
